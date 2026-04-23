@@ -102,6 +102,8 @@ local function build_lines(opts)
         if config.show_empty_state then
             lines[#lines + 1] = ' No marks yet'
             lines[#lines + 1] = ' Toggle current file to start a loop'
+        elseif #lines == 0 then
+            lines[#lines + 1] = ''
         end
     else
         for i, m in ipairs(state.marks) do
