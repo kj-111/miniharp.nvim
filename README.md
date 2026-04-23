@@ -49,6 +49,7 @@ require('miniharp').setup({
   ui = {
     position = 'center', -- 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
     show_hints = true, -- show close hints in the floating list (default: true)
+    show_empty_state = true, -- show placeholder text when the list is empty (default: true)
     enter = true, -- enter the floating window when it opens (default: true)
   },
 })
@@ -68,6 +69,7 @@ require('miniharp').setup({
     ui = {
       position = 'center', -- `top-left`, `top-right`, `bottom-left`, `bottom-right`.
       show_hints = true,
+      show_empty_state = true,
       enter = true, -- Whether to enter the floating window or not
     },
   },
@@ -117,6 +119,7 @@ All functions are exposed from `require('miniharp')`:
   ---@class MiniharpUIOpts
   ---@field position? string           @'center', 'top-left', 'top-right', 'bottom-left', or 'bottom-right' (default: 'center')
   ---@field show_hints? boolean        @Show close hints in the floating list (default: true)
+  ---@field show_empty_state? boolean  @Show placeholder text when the list is empty (default: true)
   ---@field enter? boolean             @Enter the floating list window when opening it (default: true)
   ```
 

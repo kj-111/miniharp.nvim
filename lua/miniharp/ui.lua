@@ -12,6 +12,7 @@ local window_title = 'MiniHarp'
 local config = {
     position = 'center',
     show_hints = true,
+    show_empty_state = true,
     enter = true,
 }
 local valid_positions = {
@@ -98,8 +99,10 @@ local function build_lines(opts)
     end
 
     if #state.marks == 0 then
-        lines[#lines + 1] = ' No marks yet'
-        lines[#lines + 1] = ' Toggle current file to start a loop'
+        if config.show_empty_state then
+            lines[#lines + 1] = ' No marks yet'
+            lines[#lines + 1] = ' Toggle current file to start a loop'
+        end
     else
         for i, m in ipairs(state.marks) do
             local marker = current_idx == i and '*' or ' '
@@ -167,22 +170,24 @@ local function apply_highlights(lines, meta)
     end
 
     if #state.marks == 0 then
-        vim.api.nvim_buf_add_highlight(
-            buf,
-            ns,
-            'Comment',
-            meta.row_offset,
-            0,
-            -1
-        )
-        vim.api.nvim_buf_add_highlight(
-            buf,
-            ns,
-            'Comment',
-            meta.row_offset + 1,
-            0,
-            -1
-        )
+        if config.show_empty_state then
+            vim.api.nvim_buf_add_highlight(
+                buf,
+                ns,
+                'Comment',
+                meta.row_offset,
+                0,
+                -1
+            )
+            vim.api.nvim_buf_add_highlight(
+                buf,
+                ns,
+                'Comment',
+                meta.row_offset + 1,
+                0,
+                -1
+            )
+        end
         return
     end
 
@@ -487,13 +492,14 @@ local function focus_window()
     return true
 end
 
----@param opts? { position?: string, show_hints?: boolean, enter?: boolean }
+---@param opts? { position?: string, show_hints?: boolean, show_empty_state?: boolean, enter?: boolean }
 function M.configure(opts)
     opts = opts or {}
 
     config = {
         position = normalize_position(opts.position),
         show_hints = opts.show_hints ~= false,
+        show_empty_state = opts.show_empty_state ~= false,
         enter = opts.enter ~= false,
     }
 end

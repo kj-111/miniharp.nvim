@@ -142,6 +142,7 @@ end
 ---@class MiniharpUIOpts
 ---@field position? string  @Floating list position: 'center', 'top-left', 'top-right', 'bottom-left', or 'bottom-right' (default: 'center')
 ---@field show_hints? boolean  @Show close hints in the floating list (default: true)
+---@field show_empty_state? boolean  @Show placeholder text when the list is empty (default: true)
 ---@field enter? boolean  @Enter the floating list window when opening it (default: true)
 
 ---Setup miniharp.
