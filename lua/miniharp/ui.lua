@@ -13,14 +13,6 @@ local function has_win(id) return id and vim.api.nvim_win_is_valid(id) end
 
 local function has_buf(id) return id and vim.api.nvim_buf_is_valid(id) end
 
-local function split_path(path)
-  local rel = utils.pretty(path)
-  local dir = vim.fn.fnamemodify(rel, ':h')
-  local name = vim.fn.fnamemodify(rel, ':t')
-  if dir == '.' then dir = '' end
-  return name, dir
-end
-
 ---@return string[], table
 local function build_lines()
   local lines = {}
@@ -53,7 +45,7 @@ local function build_lines()
     for i, m in ipairs(state.marks) do
       local marker = current_idx == i and '*' or ' '
 
-      local name, dir = split_path(m.file)
+      local name = vim.fn.fnamemodify(m.file, ':t')
       local prefix = string.format('%s %d. ', marker, i)
       local row = prefix .. name
       local row_meta = {
@@ -65,14 +57,7 @@ local function build_lines()
         number_end = #prefix,
         name_start = #prefix,
         name_end = #prefix + #name,
-        dir_start = nil,
-        dir_end = nil,
       }
-      if dir ~= '' then
-        row = row .. '  ' .. dir
-        row_meta.dir_start = #prefix + #name + 2
-        row_meta.dir_end = #row
-      end
 
       lines[#lines + 1] = row
       meta.rows[i] = row_meta
@@ -88,10 +73,6 @@ local function apply_highlights(meta)
   if #state.marks == 0 then return end
 
   for i, row in ipairs(meta.rows) do
-    if row.dir_start and row.dir_end then
-      vim.api.nvim_buf_add_highlight(buf, ns, 'Comment', row.line - 1, row.dir_start, row.dir_end)
-    end
-
     if meta.current_idx == i then
       vim.api.nvim_buf_add_highlight(buf, ns, 'String', row.line - 1, row.marker_start, row.marker_end)
       vim.api.nvim_buf_add_highlight(buf, ns, 'String', row.line - 1, row.number_start, row.number_end)
@@ -237,24 +218,6 @@ function M.open()
   wo.relativenumber = false
   wo.signcolumn = 'no'
 
-  vim.keymap.set('n', 'q', close, {
-    buffer = buf,
-    silent = true,
-    nowait = true,
-    desc = 'miniharp: close list',
-  })
-  vim.keymap.set('n', '<Esc>', close, {
-    buffer = buf,
-    silent = true,
-    nowait = true,
-    desc = 'miniharp: close list',
-  })
-  vim.keymap.set('n', '<C-c>', close, {
-    buffer = buf,
-    silent = true,
-    nowait = true,
-    desc = 'miniharp: close list',
-  })
   vim.keymap.set('n', 'l', jump_to_cursor_mark, {
     buffer = buf,
     silent = true,
