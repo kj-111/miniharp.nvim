@@ -213,7 +213,7 @@ function M.open()
 
   local wo = vim.wo[win]
   wo.wrap = false
-  wo.cursorline = false
+  wo.cursorline = true
   wo.number = false
   wo.relativenumber = false
   wo.signcolumn = 'no'
