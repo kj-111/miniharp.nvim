@@ -2,6 +2,9 @@
 local M = {}
 
 function M.norm(path)
+    if type(path) ~= 'string' or path == '' then
+        return ''
+    end
     return vim.fn.fnamemodify(path, ':p')
 end
 

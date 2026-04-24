@@ -6,17 +6,6 @@ local marks = require('miniharp.marks')
 ---@class MiniharpMarks
 local M = {}
 
----@param msg string
-local function echo_status(msg)
-    vim.api.nvim_echo({ { msg, 'ModeMsg' } }, false, {})
-end
-
----@param i any
----@return boolean
-local function is_positive_integer(i)
-    return type(i) == 'number' and i == i and i >= 1 and i % 1 == 0
-end
-
 ---@param entry MiniharpMark
 local function add_mark(entry)
     table.insert(state.marks, entry)
@@ -26,7 +15,7 @@ end
 ---@param step integer
 local function cycle(step)
     if #state.marks == 0 then
-        return vim.notify('miniharp: no file marks yet', vim.log.levels.WARN)
+        return
     end
 
     local cursor = state.idx
@@ -46,11 +35,6 @@ local function cycle(step)
 
         local ok, reason = marks.jump_to(i)
         if ok then
-            vim.api.nvim_echo(
-                { { ('miniharp %d/%d'):format(i, #state.marks), 'ModeMsg' } },
-                false,
-                {}
-            )
             ui.refresh()
             return
         end
@@ -66,17 +50,13 @@ local function cycle(step)
         end
     end
 
-    if #state.marks == 0 then
-        vim.notify('miniharp: no file marks yet', vim.log.levels.WARN)
-    end
-
     ui.refresh()
 end
 
 -- ---- public API ----
 
----Add or update a file mark for current buffer.
-function M.add_file()
+---Toggle a file mark for current buffer.
+function M.toggle_file()
     local file = utils.bufname()
     if file == '' then
         vim.notify(
@@ -87,55 +67,18 @@ function M.add_file()
     end
 
     local i = marks.find(file)
-    local l, c = utils.cursor()
-
-    if i then
-        state.marks[i].lnum, state.marks[i].col = l, c
-        state.idx = i
-        echo_status(
-            ('miniharp updated %d/%d %s'):format(
-                i,
-                #state.marks,
-                utils.pretty(file)
-            )
-        )
-    else
-        add_mark({ file = file, lnum = l, col = c })
-        echo_status(
-            ('miniharp marked %d/%d %s'):format(
-                state.idx,
-                #state.marks,
-                utils.pretty(file)
-            )
-        )
-    end
-
-    ui.refresh()
-end
-
----Toggle a file mark for current buffer.
-function M.toggle_file()
-    local file = utils.bufname()
-    local i = marks.find(file)
 
     if i then
         marks.remove_at(i)
-        echo_status(
-            ('miniharp removed %d/%d %s'):format(
-                math.max(state.idx, 0),
-                #state.marks,
-                utils.pretty(file)
-            )
-        )
     else
-        M.add_file()
-        return
+        local l, c = utils.cursor()
+        add_mark({ file = file, lnum = l, col = c })
     end
 
     ui.refresh()
 end
 
----Update last position for a file (used by autosave).
+---Update last position for a file.
 ---@param file string
 ---@param l integer
 ---@param c integer
@@ -152,53 +95,6 @@ end
 
 function M.prev()
     cycle(-1)
-end
-
----@param i integer
-function M.go_to(i)
-    if #state.marks == 0 then
-        vim.notify('miniharp: no file marks yet', vim.log.levels.WARN)
-        return
-    end
-
-    if not is_positive_integer(i) then
-        vim.notify(
-            'miniharp: mark position must be a positive integer',
-            vim.log.levels.WARN
-        )
-        return
-    end
-
-    local target = i
-    while #state.marks > 0 do
-        local ok, reason = marks.jump_to(target)
-        if ok then
-            echo_status(('miniharp %d/%d'):format(target, #state.marks))
-            ui.refresh()
-            return
-        end
-
-        if reason ~= 'missing-file' then
-            return
-        end
-
-        target = math.min(target, #state.marks)
-    end
-
-    vim.notify('miniharp: no file marks yet', vim.log.levels.WARN)
-    ui.refresh()
-end
-
----@return MiniharpMark[]
-function M.list()
-    return vim.deepcopy(state.marks)
-end
-
-function M.clear()
-    state.marks = {}
-    state.idx = 0
-    state.ui_swap_from = nil
-    ui.refresh()
 end
 
 return M

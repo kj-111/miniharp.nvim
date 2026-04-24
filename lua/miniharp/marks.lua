@@ -35,25 +35,6 @@ function M.remove_at(i)
 end
 
 ---@param i integer
----@param j integer
----@return boolean
-function M.swap(i, j)
-    if i == j or not state.marks[i] or not state.marks[j] then
-        return false
-    end
-
-    state.marks[i], state.marks[j] = state.marks[j], state.marks[i]
-
-    if state.idx == i then
-        state.idx = j
-    elseif state.idx == j then
-        state.idx = i
-    end
-
-    return true
-end
-
----@param i integer
 ---@return boolean, string?
 function M.jump_to(i)
     local mark = state.marks[i]
@@ -65,7 +46,9 @@ function M.jump_to(i)
     if not uv.fs_stat(mark.file) then
         M.remove_at(i)
         vim.notify(
-            ('miniharp: removed missing mark %s'):format(utils.pretty(mark.file)),
+            ('miniharp: removed missing mark %s'):format(
+                utils.pretty(mark.file)
+            ),
             vim.log.levels.WARN
         )
         return false, 'missing-file'
@@ -79,7 +62,10 @@ function M.jump_to(i)
         and vim.api.nvim_win_is_valid(state.ui_win)
         and target_win == state.ui_win
     then
-        if state.ui_origin_win and vim.api.nvim_win_is_valid(state.ui_origin_win) then
+        if
+            state.ui_origin_win
+            and vim.api.nvim_win_is_valid(state.ui_origin_win)
+        then
             target_win = state.ui_origin_win
         end
     end

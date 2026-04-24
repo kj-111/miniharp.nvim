@@ -20,7 +20,7 @@ local function ensure_group()
 end
 
 -- Track last cursor pos for marked files when leaving a buffer
-local function ensure_autosave_positions()
+local function ensure_position_tracking()
     ensure_group()
     vim.api.nvim_create_autocmd('BufLeave', {
         group = state.augroup,
@@ -36,7 +36,7 @@ local function ensure_autosave_positions()
     })
 end
 
-local function ensure_persist_autosave()
+local function ensure_persist_on_exit()
     ensure_group()
     vim.api.nvim_create_autocmd('VimLeavePre', {
         group = state.augroup,
@@ -47,7 +47,7 @@ local function ensure_persist_autosave()
     })
 end
 
-local function ensure_dirchange(opts)
+local function ensure_dirchange()
     ensure_group()
     vim.api.nvim_create_autocmd('DirChanged', {
         group = state.augroup,
@@ -58,36 +58,27 @@ local function ensure_dirchange(opts)
                 return
             end
 
-            if opts.autosave ~= false then
-                local ok, err = storage.save(old_cwd)
-                if not ok then
-                    vim.notify(
-                        ('miniharp: save failed for %s - %s'):format(
-                            vim.fn.fnamemodify(old_cwd, ':~:.'),
-                            err or 'unknown error'
-                        ),
-                        vim.log.levels.WARN
-                    )
-                end
+            local ok, err = storage.save(old_cwd)
+            if not ok then
+                vim.notify(
+                    ('miniharp: save failed for %s - %s'):format(
+                        vim.fn.fnamemodify(old_cwd, ':~:.'),
+                        err or 'unknown error'
+                    ),
+                    vim.log.levels.WARN
+                )
             end
 
-            core.clear()
+            state.marks = {}
+            state.idx = 0
+            ui.refresh()
 
-            if opts.autoload then
-                local ok, err = storage.load(new_cwd)
-                if not ok and not is_missing_session(err) then
-                    vim.notify(
-                        'miniharp: ' .. (err or 'unknown error'),
-                        vim.log.levels.WARN
-                    )
-                end
-            end
-
-            if opts.show_on_autoload and #state.marks > 0 then
-                local msg = ('Restored %d mark(s)'):format(#state.marks)
-                vim.schedule(function()
-                    ui.open({ msg = msg })
-                end)
+            ok, err = storage.load(new_cwd)
+            if not ok and not is_missing_session(err) then
+                vim.notify(
+                    'miniharp: ' .. (err or 'unknown error'),
+                    vim.log.levels.WARN
+                )
             end
 
             state.cwd = new_cwd
@@ -96,7 +87,9 @@ local function ensure_dirchange(opts)
     })
 end
 
-M = vim.tbl_extend('keep', {}, core)
+M.toggle_file = core.toggle_file
+M.next = core.next
+M.prev = core.prev
 
 function M.show_list()
     if ui.is_open() then
@@ -107,81 +100,22 @@ function M.show_list()
     ui.open({})
 end
 
----Open the floating list and enter it. If already open, focus the existing window.
-function M.enter_list()
-    ui.enter()
-end
+---Setup miniharp.
+function M.setup()
+    ensure_position_tracking()
 
----Persist current state for the working directory.
-function M.save()
-    local ok, err = storage.save()
-    if not ok then
-        vim.notify(
-            'miniharp: ' .. (err or 'unknown error'),
-            vim.log.levels.ERROR
-        )
-    end
-end
-
----Restore state for the working directory (if present).
-function M.restore()
     local ok, err = storage.load()
     if not ok then
-        local level = is_missing_session(err) and vim.log.levels.INFO
-            or vim.log.levels.ERROR
-        vim.notify('miniharp: ' .. (err or 'unknown error'), level)
-    end
-end
-
----@class MiniharpOpts
----@field autoload? boolean  @Load saved marks for this cwd on startup (default: true)
----@field autosave? boolean  @Save marks for this cwd on exit (default: true)
----@field show_on_autoload? boolean  @Show the marks list UI after a successful autoload (default: false)
----@field ui? MiniharpUIOpts  @Floating list UI options
-
----@class MiniharpUIOpts
----@field position? string  @Floating list position: 'center', 'top-left', 'top-right', 'bottom-left', or 'bottom-right' (default: 'center')
----@field show_hints? boolean  @Show close hints in the floating list (default: true)
----@field show_empty_state? boolean  @Show placeholder text when the list is empty (default: true)
----@field enter? boolean  @Enter the floating list window when opening it (default: true)
-
----Setup miniharp.
----@param opts? MiniharpOpts
-function M.setup(opts)
-    opts = opts or {}
-    ui.configure(opts.ui)
-
-    ensure_autosave_positions()
-
-    local autoload = opts.autoload ~= false
-    local autosave = opts.autosave ~= false
-    local show_ui = opts.show_on_autoload or false
-
-    if autoload then
-        local ok, err = storage.load()
-        if not ok then
-            if not is_missing_session(err) then
-                vim.notify(
-                    'miniharp: ' .. (err or 'unknown error'),
-                    vim.log.levels.WARN
-                )
-            end
-        elseif #state.marks > 0 and show_ui then
-            vim.schedule(function()
-                ui.open({ msg = ('Restored %d mark(s)'):format(#state.marks) })
-            end)
+        if not is_missing_session(err) then
+            vim.notify(
+                'miniharp: ' .. (err or 'unknown error'),
+                vim.log.levels.WARN
+            )
         end
     end
 
-    if autosave then
-        ensure_persist_autosave()
-    end
-
-    ensure_dirchange({
-        autoload = autoload,
-        autosave = autosave,
-        show_on_autoload = show_ui,
-    })
+    ensure_persist_on_exit()
+    ensure_dirchange()
 end
 
 return M

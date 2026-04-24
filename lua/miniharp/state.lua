@@ -12,7 +12,6 @@ local utils = require('miniharp.utils')
 ---@field augroup? integer
 ---@field ui_win? integer
 ---@field ui_origin_win? integer
----@field ui_swap_from? integer
 
 local M ---@type MiniharpState
 
@@ -23,7 +22,6 @@ M = {
     augroup = nil,
     ui_win = nil,
     ui_origin_win = nil,
-    ui_swap_from = nil,
 }
 
 return M

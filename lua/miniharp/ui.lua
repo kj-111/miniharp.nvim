@@ -7,21 +7,6 @@ local utils = require('miniharp.utils')
 
 local ns = vim.api.nvim_create_namespace('MiniharpUI')
 local win, buf
-local last_opts = {}
-local window_title = 'MiniHarp'
-local config = {
-    position = 'center',
-    show_hints = true,
-    show_empty_state = true,
-    enter = true,
-}
-local valid_positions = {
-    center = true,
-    ['top-left'] = true,
-    ['top-right'] = true,
-    ['bottom-left'] = true,
-    ['bottom-right'] = true,
-}
 local render, close
 
 local function has_win(id)
@@ -30,26 +15,6 @@ end
 
 local function has_buf(id)
     return id and vim.api.nvim_buf_is_valid(id)
-end
-
----@param position? string
----@return string
-local function normalize_position(position)
-    if type(position) ~= 'string' then
-        return 'center'
-    end
-
-    position = position:lower():gsub('[%s_]+', '-')
-    if valid_positions[position] then
-        return position
-    end
-
-    vim.notify(
-        ("miniharp: invalid ui.position '%s', using 'center'"):format(position),
-        vim.log.levels.WARN
-    )
-
-    return 'center'
 end
 
 local function split_path(path)
@@ -62,19 +27,14 @@ local function split_path(path)
     return name, dir
 end
 
----@param opts? { msg?: string }
 ---@return string[], table
-local function build_lines(opts)
-    opts = opts or {}
+local function build_lines()
     local lines = {}
     local current_file = ''
     local current_idx
     local meta = {
-        row_offset = 0,
         rows = {},
         current_idx = nil,
-        close_line = nil,
-        swap_from = state.ui_swap_from,
     }
 
     if has_win(state.ui_origin_win) then
@@ -93,18 +53,8 @@ local function build_lines(opts)
 
     meta.current_idx = current_idx
 
-    if opts.msg and opts.msg ~= '' then
-        lines[#lines + 1] = ' ' .. opts.msg
-        meta.row_offset = #lines
-    end
-
     if #state.marks == 0 then
-        if config.show_empty_state then
-            lines[#lines + 1] = ' No marks yet'
-            lines[#lines + 1] = ' Toggle current file to start a loop'
-        elseif #lines == 0 then
-            lines[#lines + 1] = ''
-        end
+        lines[#lines + 1] = ''
     else
         for i, m in ipairs(state.marks) do
             local marker = current_idx == i and '*' or ' '
@@ -133,63 +83,15 @@ local function build_lines(opts)
             lines[#lines + 1] = row
             meta.rows[i] = row_meta
         end
-
-        if config.show_hints then
-            lines[#lines + 1] = ''
-            lines[#lines + 1] = ' Keys: [enter] [dd] [tab] [q] [esc] [ctrl-c]'
-            meta.close_line = #lines
-        end
     end
 
     return lines, meta
 end
 
-local function add_token_highlight(line, token, start_col)
-    local col = string.find(line, token, start_col or 1, true)
-    if not col then
-        return
-    end
-    return col - 1, col - 1 + #token
-end
-
----@param msg string
-local function echo_status(msg)
-    vim.api.nvim_echo({ { msg, 'ModeMsg' } }, false, {})
-end
-
-local function apply_highlights(lines, meta)
+local function apply_highlights(meta)
     vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
 
-    if meta.row_offset > 0 then
-        vim.api.nvim_buf_add_highlight(
-            buf,
-            ns,
-            'Comment',
-            meta.row_offset - 1,
-            0,
-            -1
-        )
-    end
-
     if #state.marks == 0 then
-        if config.show_empty_state then
-            vim.api.nvim_buf_add_highlight(
-                buf,
-                ns,
-                'Comment',
-                meta.row_offset,
-                0,
-                -1
-            )
-            vim.api.nvim_buf_add_highlight(
-                buf,
-                ns,
-                'Comment',
-                meta.row_offset + 1,
-                0,
-                -1
-            )
-        end
         return
     end
 
@@ -231,50 +133,6 @@ local function apply_highlights(lines, meta)
                 row.name_end
             )
         end
-
-        if meta.swap_from == i then
-            vim.api.nvim_buf_add_highlight(
-                buf,
-                ns,
-                'IncSearch',
-                row.line - 1,
-                row.number_start,
-                row.name_end
-            )
-        end
-    end
-
-    if meta.close_line then
-        local line = lines[meta.close_line]
-        vim.api.nvim_buf_add_highlight(
-            buf,
-            ns,
-            'Comment',
-            meta.close_line - 1,
-            0,
-            7
-        )
-
-        for _, token in ipairs({
-            '[enter]',
-            '[dd]',
-            '[tab]',
-            '[q]',
-            '[esc]',
-            '[ctrl-c]',
-        }) do
-            local start_col, end_col = add_token_highlight(line, token)
-            if start_col and end_col then
-                vim.api.nvim_buf_add_highlight(
-                    buf,
-                    ns,
-                    'Special',
-                    meta.close_line - 1,
-                    start_col,
-                    end_col
-                )
-            end
-        end
     end
 end
 
@@ -285,7 +143,7 @@ local function cursor_mark_index()
     end
 
     local line = vim.api.nvim_win_get_cursor(win)[1]
-    local _, meta = build_lines(last_opts)
+    local _, meta = build_lines()
     for _, row in ipairs(meta.rows) do
         if row.line == line then
             return row.index
@@ -300,16 +158,11 @@ local function restore_cursor(cursor)
     end
 
     local maxline = vim.api.nvim_buf_line_count(buf)
-    pcall(vim.api.nvim_win_set_cursor, win, { math.min(cursor[1], maxline), cursor[2] })
-end
-
-local function clear_pending_swap()
-    if not state.ui_swap_from then
-        return
-    end
-
-    state.ui_swap_from = nil
-    render()
+    pcall(
+        vim.api.nvim_win_set_cursor,
+        win,
+        { math.min(cursor[1], maxline), cursor[2] }
+    )
 end
 
 local function jump_to_cursor_mark()
@@ -318,17 +171,13 @@ local function jump_to_cursor_mark()
         return
     end
 
-    state.ui_swap_from = nil
     local ok = marks.jump_to(index)
     if not ok then
         render()
         return
     end
 
-    echo_status(('miniharp %d/%d'):format(index, #state.marks))
-    if ok then
-        close()
-    end
+    close()
 end
 
 local function remove_cursor_mark()
@@ -338,79 +187,23 @@ local function remove_cursor_mark()
     end
 
     local cursor = vim.api.nvim_win_get_cursor(win)
-    if state.ui_swap_from == index then
-        state.ui_swap_from = nil
-    elseif state.ui_swap_from and state.ui_swap_from > index then
-        state.ui_swap_from = state.ui_swap_from - 1
-    end
-
-    local ok, mark = marks.remove_at(index)
-    if ok and mark then
-        echo_status(
-            ('miniharp removed %d/%d %s'):format(
-                math.max(state.idx, 0),
-                #state.marks,
-                utils.pretty(mark.file)
-            )
-        )
-        render()
-        restore_cursor(cursor)
-    end
-end
-
-local function toggle_swap_mark()
-    local index = cursor_mark_index()
-    if not index then
-        return
-    end
-
-    if state.ui_swap_from == index then
-        clear_pending_swap()
-        return
-    end
-
-    if not state.ui_swap_from then
-        local cursor = vim.api.nvim_win_get_cursor(win)
-        state.ui_swap_from = index
-        render()
-        restore_cursor(cursor)
-        return
-    end
-
-    local other = state.ui_swap_from
-    local cursor = vim.api.nvim_win_get_cursor(win)
-    state.ui_swap_from = nil
-    if marks.swap(other, index) then
-        echo_status(('miniharp swapped %d <-> %d'):format(other, index))
+    local ok = marks.remove_at(index)
+    if ok then
         render()
         restore_cursor(cursor)
     end
 end
 
 local function position_window(lines)
-    local width = vim.fn.strdisplaywidth(window_title)
+    local width = 0
     for _, line in ipairs(lines) do
         width = math.max(width, vim.fn.strdisplaywidth(line))
     end
 
     width = math.min(width + 4, math.max(28, math.floor(vim.o.columns * 0.6)))
     local height = math.min(#lines, math.max(4, math.floor(vim.o.lines * 0.6)))
-    local max_row = math.max(1, vim.o.lines - height - 2)
     local max_col = math.max(0, vim.o.columns - width)
-    local row = math.max(1, math.floor((vim.o.lines - height) / 2) - 1)
-    local col = math.max(0, math.floor((vim.o.columns - width) / 2))
-
-    if config.position == 'top-left' then
-        row, col = 1, 0
-    elseif config.position == 'top-right' then
-        row, col = 1, max_col
-    elseif config.position == 'bottom-left' then
-        row, col = max_row, 0
-    elseif config.position == 'bottom-right' then
-        row, col = max_row, max_col
-    end
-
-    return width, height, row, col
+    return width, height, 1, max_col
 end
 
 render = function()
@@ -418,11 +211,11 @@ render = function()
         return
     end
 
-    local lines, meta = build_lines(last_opts)
+    local lines, meta = build_lines()
     vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
-    apply_highlights(lines, meta)
+    apply_highlights(meta)
 
     if has_win(win) then
         local width, height, row, col = position_window(lines)
@@ -441,7 +234,6 @@ close = function()
 
     state.ui_win = nil
     state.ui_origin_win = nil
-    state.ui_swap_from = nil
 
     if has_win(win) then
         pcall(vim.api.nvim_win_close, win, true)
@@ -452,8 +244,6 @@ close = function()
     end
 
     win, buf = nil, nil
-    last_opts = {}
-
     if has_win(origin) then
         pcall(vim.api.nvim_set_current_win, origin)
     end
@@ -477,44 +267,11 @@ function M.refresh()
     render()
 end
 
-local function focus_window()
-    if not has_win(win) then
-        return false
-    end
-
-    local current = vim.api.nvim_get_current_win()
-    if current ~= win and has_win(current) then
-        state.ui_origin_win = current
-    end
-
-    if current ~= win then
-        pcall(vim.api.nvim_set_current_win, win)
-    end
-
-    return true
-end
-
----@param opts? { position?: string, show_hints?: boolean, show_empty_state?: boolean, enter?: boolean }
-function M.configure(opts)
-    opts = opts or {}
-
-    config = {
-        position = normalize_position(opts.position),
-        show_hints = opts.show_hints ~= false,
-        show_empty_state = opts.show_empty_state ~= false,
-        enter = opts.enter ~= false,
-    }
-end
-
----@param opts? { msg?: string, enter?: boolean }
-function M.open(opts)
-    opts = opts or {}
-
+function M.open()
     if has_win(win) then
         close()
     end
 
-    last_opts = { msg = opts.msg }
     state.ui_origin_win = vim.api.nvim_get_current_win()
 
     buf = vim.api.nvim_create_buf(false, true)
@@ -523,14 +280,10 @@ function M.open(opts)
     vim.api.nvim_set_option_value('filetype', 'miniharp', { buf = buf })
     vim.api.nvim_set_option_value('buftype', 'nofile', { buf = buf })
 
-    local lines = build_lines(last_opts)
+    local lines = build_lines()
     local width, height, row, col = position_window(lines)
-    local enter = opts.enter
-    if enter == nil then
-        enter = config.enter
-    end
 
-    win = vim.api.nvim_open_win(buf, enter, {
+    win = vim.api.nvim_open_win(buf, true, {
         relative = 'editor',
         row = row,
         col = col,
@@ -538,8 +291,6 @@ function M.open(opts)
         height = height,
         style = 'minimal',
         border = 'rounded',
-        title = window_title,
-        title_pos = 'center',
         noautocmd = true,
     })
 
@@ -570,7 +321,7 @@ function M.open(opts)
         nowait = true,
         desc = 'miniharp: close list',
     })
-    vim.keymap.set('n', '<CR>', jump_to_cursor_mark, {
+    vim.keymap.set('n', 'l', jump_to_cursor_mark, {
         buffer = buf,
         silent = true,
         nowait = true,
@@ -582,23 +333,7 @@ function M.open(opts)
         nowait = true,
         desc = 'miniharp: remove mark under cursor',
     })
-    vim.keymap.set('n', '<Tab>', toggle_swap_mark, {
-        buffer = buf,
-        silent = true,
-        nowait = true,
-        desc = 'miniharp: select or swap mark',
-    })
-
     render()
-end
-
-function M.enter()
-    if M.is_open() then
-        focus_window()
-        return
-    end
-
-    M.open({ enter = true })
 end
 
 return M
