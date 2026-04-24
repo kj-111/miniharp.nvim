@@ -16,12 +16,12 @@ local utils = require('miniharp.utils')
 local M ---@type MiniharpState
 
 M = {
-    marks = {},
-    cwd = utils.norm(vim.fn.getcwd()),
-    idx = 0,
-    augroup = nil,
-    ui_win = nil,
-    ui_origin_win = nil,
+  marks = {},
+  cwd = utils.norm(vim.fn.getcwd()),
+  idx = 0,
+  augroup = nil,
+  ui_win = nil,
+  ui_origin_win = nil,
 }
 
 return M
