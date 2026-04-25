@@ -1,10 +1,6 @@
 # miniharp.nvim
 
-> Minimal Harpoon-like plugin for Neovim. Zero deps, tiny API, per-cwd persistence.
-
-Inspired by (and giving full credit to) **Harpoon** by [ThePrimeagen](https://github.com/ThePrimeagen/). If you want a richer feature set (lists, terminals, advanced UI), check out [Harpoon2](https://github.com/ThePrimeagen/harpoon/tree/harpoon2).
-
-This is a personal fork focused on a smaller core workflow.
+> Minimal file marks for Neovim. Zero deps, tiny API, per-cwd persistence.
 
 ## What it does
 
@@ -17,31 +13,18 @@ The list uses `l` to jump and `dd` to remove. Calling `show_list()` again closes
 
 ## Installation
 
-### vim.pack
-
 ```lua
 vim.pack.add({
-  {
-    src = 'https://github.com/kj-111/miniharp.nvim',
-  }
+  { src = 'https://github.com/kj-111/miniharp.nvim' },
 })
-
-require('miniharp').setup()
-```
-
-### lazy.nvim
-
-```lua
-{
-  'kj-111/miniharp.nvim',
-  opts = {},
-}
 ```
 
 ## Usage
 
 ```lua
 local miniharp = require('miniharp')
+
+miniharp.setup()
 
 vim.keymap.set('n', '<leader>m', miniharp.toggle_file, { desc = 'miniharp: toggle file mark' })
 vim.keymap.set('n', '<C-n>',     miniharp.next,        { desc = 'miniharp: next file mark' })
