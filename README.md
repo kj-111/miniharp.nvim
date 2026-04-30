@@ -9,7 +9,7 @@
 - Remember cursor positions and restore marks per cwd.
 - Show a tiny focused list in the center.
 
-The list uses `l` to jump and `dd` to remove. Calling `show_list()` again closes it.
+The list uses `l` to jump, `dd` to remove, and `q` to close.
 
 ## Installation
 

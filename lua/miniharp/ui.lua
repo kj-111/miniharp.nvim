@@ -222,6 +222,12 @@ function M.open()
   wo.relativenumber = false
   wo.signcolumn = 'no'
 
+  vim.keymap.set('n', 'q', close, {
+    buffer = buf,
+    silent = true,
+    nowait = true,
+    desc = 'miniharp: close list',
+  })
   vim.keymap.set('n', 'l', jump_to_cursor_mark, {
     buffer = buf,
     silent = true,
