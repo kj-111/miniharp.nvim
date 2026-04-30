@@ -7,7 +7,7 @@
 - Toggle file marks for the current project.
 - Jump to the next or previous mark.
 - Remember cursor positions and restore marks per cwd.
-- Show a tiny focused list in the top-right corner.
+- Show a tiny focused list in the center.
 
 The list uses `l` to jump and `dd` to remove. Calling `show_list()` again closes it.
 

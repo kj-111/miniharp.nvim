@@ -8,6 +8,7 @@ local utils = require('miniharp.utils')
 local ns = vim.api.nvim_create_namespace('MiniharpUI')
 local win, buf
 local render, close
+local default_width = 42
 
 local function has_win(id) return id and vim.api.nvim_win_is_valid(id) end
 
@@ -126,15 +127,17 @@ local function remove_cursor_mark()
 end
 
 local function position_window(lines)
-  local width = 0
+  local width = default_width
   for _, line in ipairs(lines) do
     width = math.max(width, vim.fn.strdisplaywidth(line))
   end
 
-  width = math.min(width + 4, math.max(28, math.floor(vim.o.columns * 0.6)))
+  width = math.min(width, math.max(1, vim.o.columns - 4))
   local height = math.min(#lines, math.max(4, math.floor(vim.o.lines * 0.6)))
-  local max_col = math.max(0, vim.o.columns - width)
-  return width, height, 1, max_col
+  local row = math.max(1, math.floor((vim.o.lines - height) / 2) - 1)
+  local col = math.max(0, math.floor((vim.o.columns - width) / 2))
+
+  return width, height, row, col
 end
 
 render = function()
