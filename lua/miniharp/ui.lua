@@ -9,6 +9,7 @@ local ns = vim.api.nvim_create_namespace('MiniharpUI')
 local win, buf
 local render, close
 local default_width = 42
+local default_height = 5
 
 local function has_win(id) return id and vim.api.nvim_win_is_valid(id) end
 
@@ -133,7 +134,7 @@ local function position_window(lines)
   end
 
   width = math.min(width, math.max(1, vim.o.columns - 4))
-  local height = math.min(#lines, math.max(4, math.floor(vim.o.lines * 0.6)))
+  local height = math.min(default_height, math.max(1, vim.o.lines - 4))
   local row = math.max(1, math.floor((vim.o.lines - height) / 2) - 1)
   local col = math.max(0, math.floor((vim.o.columns - width) / 2))
 
