@@ -204,7 +204,7 @@ function M.open()
 
   win = vim.api.nvim_open_win(buf, true, {
     relative = 'editor',
-    title = 'Harpoon',
+    title = 'Portal',
     title_pos = 'center',
     row = row,
     col = col,
