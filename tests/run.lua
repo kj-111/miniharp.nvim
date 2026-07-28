@@ -14,6 +14,11 @@ local function feed(keys) vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(k
 miniharp.setup()
 assert(#state.marks == 0, 'expected a clean session, got ' .. #state.marks .. ' marks')
 
+-- setup is idempotent: calling it again must not duplicate autocmds
+miniharp.setup()
+local autocmds = vim.api.nvim_get_autocmds({ group = 'Miniharp' })
+assert(#autocmds == 3, 'expected 3 autocmds after a second setup, got ' .. #autocmds)
+
 -- toggle on/off
 vim.cmd('edit lua/miniharp/init.lua')
 miniharp.toggle_file()

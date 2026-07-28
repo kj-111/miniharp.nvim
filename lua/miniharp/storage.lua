@@ -4,29 +4,12 @@ local M = {}
 local state = require('miniharp.state')
 local utils = require('miniharp.utils')
 
--- Pick a base dir for sessions (prefer stdpath('state') if available)
-local function base_dir()
-  local ok, dir = pcall(vim.fn.stdpath, 'state')
-  if not ok or type(dir) ~= 'string' or dir == '' then dir = vim.fn.stdpath('data') end
-  return dir .. '/miniharp/sessions'
-end
-
 -- Compute a session file path for a given cwd.
 ---@param cwd? string
 ---@return string path
 local function session_path(cwd)
-  cwd = cwd or state.cwd or utils.norm(vim.fn.getcwd())
-  local norm_cwd = utils.norm(cwd)
-
-  local key
-  local ok, result = pcall(vim.fn.sha256, norm_cwd)
-  if ok and type(result) == 'string' and result ~= '' then
-    key = result
-  else
-    key = norm_cwd:gsub('[^%w]+', '_')
-  end
-
-  return base_dir() .. '/session-' .. key .. '.json'
+  local key = vim.fn.sha256(utils.norm(cwd or state.cwd or vim.fn.getcwd()))
+  return vim.fn.stdpath('state') .. '/miniharp/sessions/session-' .. key .. '.json'
 end
 
 ---Save current marks for the cwd into stdpath('state'|'data')/miniharp/sessions.
@@ -39,7 +22,7 @@ function M.save(cwd)
     marks = state.marks or {},
   }
 
-  local ok, json = pcall(utils.json_encode, payload)
+  local ok, json = pcall(vim.json.encode, payload)
   if not ok then return false, 'JSON encode failed' end
 
   local mk_ok, made = pcall(vim.fn.mkdir, vim.fn.fnamemodify(path, ':h'), 'p')
@@ -64,7 +47,7 @@ function M.load(cwd)
   local ok_read, content = pcall(function() return table.concat(vim.fn.readfile(path), '\n') end)
   if not ok_read then return false, 'read failed' end
 
-  local ok_json, data = pcall(utils.json_decode, content)
+  local ok_json, data = pcall(vim.json.decode, content)
   if not ok_json or type(data) ~= 'table' then return false, 'JSON decode failed' end
 
   local restored = {}

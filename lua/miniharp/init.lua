@@ -10,15 +10,8 @@ local log = require('miniharp.log')
 
 local function is_missing_session(err) return err and string.find(err, 'no session file for cwd', 1, true) end
 
--- Create (or reuse) the plugin augroup
-local function ensure_group()
-  if state.augroup then return end
-  state.augroup = vim.api.nvim_create_augroup('Miniharp', { clear = true })
-end
-
 -- Track last cursor pos for marked files when leaving a buffer
 local function ensure_position_tracking()
-  ensure_group()
   vim.api.nvim_create_autocmd('BufLeave', {
     group = state.augroup,
     callback = function(args)
@@ -32,7 +25,6 @@ local function ensure_position_tracking()
 end
 
 local function ensure_persist_on_exit()
-  ensure_group()
   vim.api.nvim_create_autocmd('VimLeavePre', {
     group = state.augroup,
     callback = function() storage.save() end,
@@ -41,7 +33,6 @@ local function ensure_persist_on_exit()
 end
 
 local function ensure_dirchange()
-  ensure_group()
   vim.api.nvim_create_autocmd('DirChanged', {
     group = state.augroup,
     callback = function()
@@ -101,17 +92,23 @@ function M.setup(opts)
   opts = opts or {}
   if opts.notify ~= nil then log.enabled = opts.notify end
 
+  -- clear = true keeps setup idempotent: re-running replaces the autocmds
+  state.augroup = vim.api.nvim_create_augroup('Miniharp', { clear = true })
+
   ensure_position_tracking()
 
   if opts.pin then
+    local open_pin = function()
+      if not ui.is_pin_open() then ui.toggle_pin() end
+    end
     if vim.v.vim_did_enter == 1 then
-      ui.toggle_pin()
+      open_pin()
     else
       vim.api.nvim_create_autocmd('VimEnter', {
         group = state.augroup,
         once = true,
-        callback = function() ui.toggle_pin() end,
-        desc = 'miniharp: open pinned outline on startup',
+        callback = open_pin,
+        desc = 'miniharp: open outline on startup',
       })
     end
   end
