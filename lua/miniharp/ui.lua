@@ -25,15 +25,13 @@ local function scratch_buf()
   return b
 end
 
+---Build the list rows; row n is always mark n.
 ---@param compact? boolean -- pin style: no marker column, "1 name" rows
----@return string[], table
+---@return string[]
 local function build_lines(compact)
   local lines = {}
   local current_file = ''
   local current_idx
-  local meta = {
-    rows = {},
-  }
 
   if has_win(state.ui_origin_win) then
     local origin_buf = vim.api.nvim_win_get_buf(state.ui_origin_win)
@@ -59,22 +57,21 @@ local function build_lines(compact)
       local prefix = compact and (id .. ' ') or (id .. '. ')
 
       lines[#lines + 1] = prefix .. name
-      meta.rows[i] = { index = i, line = #lines }
     end
   end
 
-  return lines, meta
+  return lines
 end
 
 ---@param target_buf integer
 ---@param compact? boolean
----@return string[], table
+---@return string[]
 local function set_lines(target_buf, compact)
-  local lines, meta = build_lines(compact)
+  local lines = build_lines(compact)
   vim.api.nvim_set_option_value('modifiable', true, { buf = target_buf })
   vim.api.nvim_buf_set_lines(target_buf, 0, -1, false, lines)
   vim.api.nvim_set_option_value('modifiable', false, { buf = target_buf })
-  return lines, meta
+  return lines
 end
 
 ---@return integer|nil
@@ -82,10 +79,7 @@ local function cursor_mark_index()
   if not has_win(state.ui_win) then return end
 
   local line = vim.api.nvim_win_get_cursor(state.ui_win)[1]
-  local _, meta = build_lines()
-  for _, row in ipairs(meta.rows) do
-    if row.line == line then return row.index end
-  end
+  if state.marks[line] then return line end
 end
 
 ---@param cursor integer[]
@@ -131,10 +125,7 @@ local function move_cursor_mark(delta)
   if not j then return end
 
   render()
-
-  local _, meta = build_lines()
-  local row = meta.rows[j]
-  if row then pcall(vim.api.nvim_win_set_cursor, state.ui_win, { row.line, 0 }) end
+  pcall(vim.api.nvim_win_set_cursor, state.ui_win, { j, 0 })
 end
 
 local function position_window(lines)
