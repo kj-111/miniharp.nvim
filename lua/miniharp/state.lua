@@ -10,9 +10,8 @@ local utils = require('miniharp.utils')
 ---@field cwd string
 ---@field idx integer
 ---@field augroup? integer
----@field ui_win? integer
----@field ui_origin_win? integer
 ---@field pin_win? integer
+---@field origin_win? integer -- window that had focus before entering the outline
 
 local M ---@type MiniharpState
 
@@ -21,9 +20,8 @@ M = {
   cwd = utils.norm(vim.fn.getcwd()),
   idx = 0,
   augroup = nil,
-  ui_win = nil,
-  ui_origin_win = nil,
   pin_win = nil,
+  origin_win = nil,
 }
 
 return M

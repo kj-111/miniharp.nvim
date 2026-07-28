@@ -67,9 +67,10 @@ function M.jump_to(i)
 
   state.idx = i
 
+  -- jumping from inside the outline lands in the window it was entered from
   local target_win = vim.api.nvim_get_current_win()
-  if state.ui_win and vim.api.nvim_win_is_valid(state.ui_win) and target_win == state.ui_win then
-    if state.ui_origin_win and vim.api.nvim_win_is_valid(state.ui_origin_win) then target_win = state.ui_origin_win end
+  if state.pin_win and vim.api.nvim_win_is_valid(state.pin_win) and target_win == state.pin_win then
+    if state.origin_win and vim.api.nvim_win_is_valid(state.origin_win) then target_win = state.origin_win end
   end
 
   vim.api.nvim_win_call(target_win, function()

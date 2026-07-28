@@ -84,17 +84,12 @@ M.next = core.next
 M.prev = core.prev
 M.jump = core.jump
 
-function M.show_list()
-  if ui.is_open() then
-    ui.close()
-    return
-  end
-
-  ui.open({})
-end
-
----Toggle the pinned outline: a small read-only float that stays open.
+---Toggle the outline: a small float glued to the bottom-right that stays open.
 function M.toggle_pin() ui.toggle_pin() end
+
+---Enter the outline to interact with it (l, dd, <C-j>/<C-k>, q);
+---opens it first when closed. Entering while inside leaves it again.
+function M.focus_pin() ui.focus_pin() end
 
 ---@class MiniharpOpts
 ---@field notify? boolean -- show info notifications for add/remove/jump/restore (default: true)

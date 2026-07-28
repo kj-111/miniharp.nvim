@@ -7,10 +7,11 @@
 - Toggle file marks for the current project.
 - Jump to the next or previous mark.
 - Remember cursor positions and restore marks per cwd.
-- Show a tiny focused list in the center.
-- Pin a read-only outline in the bottom-right corner that stays open while you work.
+- A tiny outline glued to the bottom-right corner that stays open while you
+  work; the current file shows a `*` instead of its number.
 
-The list uses `l` to jump, `dd` to remove, `<C-j>`/`<C-k>` to reorder, and `q` to close.
+Focus the outline to interact with it: `l` jumps (and brings you back to your
+code), `dd` removes, `<C-j>`/`<C-k>` reorder, `q` leaves.
 
 ## Installation
 
@@ -33,7 +34,8 @@ miniharp.setup({
 vim.keymap.set('n', '<leader>m', miniharp.toggle_file, { desc = 'miniharp: toggle file mark' })
 vim.keymap.set('n', '<C-n>',     miniharp.next,        { desc = 'miniharp: next file mark' })
 vim.keymap.set('n', '<C-p>',     miniharp.prev,        { desc = 'miniharp: prev file mark' })
-vim.keymap.set('n', '<leader>l', miniharp.show_list,   { desc = 'miniharp: toggle marks list' })
+vim.keymap.set('n', '<leader>o', miniharp.toggle_pin,  { desc = 'miniharp: toggle outline' })
+vim.keymap.set('n', '<leader>p', miniharp.focus_pin,   { desc = 'miniharp: focus outline' })
 
 -- jump straight to a mark by number
 for i = 1, 4 do
@@ -46,7 +48,7 @@ end
 > distinguish Ctrl+number from a plain number. `<M-1>` (Alt) works nearly
 > everywhere, `<leader>1` always does.
 
-There is also a `:Miniharp` command: `toggle`, `list` (default), `next`, `prev`, `jump <n>`, `pin`.
+There is also a `:Miniharp` command: `toggle`, `focus` (default), `next`, `prev`, `jump <n>`, `pin`.
 
 ## API
 
@@ -54,8 +56,8 @@ There is also a `:Miniharp` command: `toggle`, `list` (default), `next`, `prev`,
 - `toggle_file()` – Toggle a mark for the current file.
 - `next()` / `prev()` – Jump to next/previous file mark (wraps).
 - `jump(i)` – Jump straight to mark `i`.
-- `show_list()` – Toggle the floating list.
-- `toggle_pin()` – Toggle the pinned outline (bottom-right, non-focusable, live-updating). The current file shows a `*` instead of its number.
+- `toggle_pin()` – Toggle the outline.
+- `focus_pin()` – Enter the outline to interact with it (opens it when closed); entering while inside leaves it again.
 
 ## Development
 
