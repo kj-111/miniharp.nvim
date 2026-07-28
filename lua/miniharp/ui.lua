@@ -222,8 +222,8 @@ local function render_pin()
 
   vim.api.nvim_win_set_config(state.pin_win, {
     relative = 'editor',
-    anchor = 'NE',
-    row = 1,
+    anchor = 'SE',
+    row = math.max(1, vim.o.lines - 3),
     col = vim.o.columns - 1,
     width = width,
     height = height,
@@ -252,8 +252,8 @@ local function open_pin()
 
   state.pin_win = vim.api.nvim_open_win(pin_buf, false, {
     relative = 'editor',
-    anchor = 'NE',
-    row = 1,
+    anchor = 'SE',
+    row = math.max(1, vim.o.lines - 3),
     col = vim.o.columns - 1,
     width = pin_min_width,
     height = 1,
