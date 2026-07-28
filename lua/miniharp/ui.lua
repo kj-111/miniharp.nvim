@@ -16,8 +16,9 @@ local function has_win(id) return id and vim.api.nvim_win_is_valid(id) end
 
 local function has_buf(id) return id and vim.api.nvim_buf_is_valid(id) end
 
+---@param compact? boolean -- pin style: no marker column, "1 name" rows
 ---@return string[], table
-local function build_lines()
+local function build_lines(compact)
   local lines = {}
   local current_file = ''
   local current_idx
@@ -46,10 +47,8 @@ local function build_lines()
     lines[#lines + 1] = ''
   else
     for i, m in ipairs(state.marks) do
-      local marker = current_idx == i and '*' or ' '
-
       local name = vim.fn.fnamemodify(m.file, ':t')
-      local prefix = string.format('%s %d. ', marker, i)
+      local prefix = compact and string.format('%d ', i) or string.format('%d. ', i)
       local row = prefix .. name
       local row_meta = {
         index = i,
@@ -83,9 +82,10 @@ local function apply_highlights(target_buf, meta)
 end
 
 ---@param target_buf integer
+---@param compact? boolean
 ---@return string[], table
-local function set_lines(target_buf)
-  local lines, meta = build_lines()
+local function set_lines(target_buf, compact)
+  local lines, meta = build_lines(compact)
   vim.api.nvim_set_option_value('modifiable', true, { buf = target_buf })
   vim.api.nvim_buf_set_lines(target_buf, 0, -1, false, lines)
   vim.api.nvim_set_option_value('modifiable', false, { buf = target_buf })
@@ -203,12 +203,13 @@ end
 
 local pin_buf
 local pin_augroup
-local pin_min_width = 20
+-- shrink-to-fit: the window is exactly as wide as its longest row
+local pin_min_width = 1
 
 local function render_pin()
   if not has_buf(pin_buf) then return end
 
-  local lines = set_lines(pin_buf)
+  local lines = set_lines(pin_buf, true)
 
   if not has_win(state.pin_win) then return end
 
@@ -257,7 +258,7 @@ local function open_pin()
     width = pin_min_width,
     height = 1,
     style = 'minimal',
-    border = 'rounded',
+    border = 'none',
     focusable = false,
     noautocmd = true,
   })
@@ -267,6 +268,9 @@ local function open_pin()
   wo.number = false
   wo.relativenumber = false
   wo.signcolumn = 'no'
+  -- keep the outline unobtrusive: dimmed text, blended background
+  wo.winblend = 30
+  wo.winhighlight = 'NormalFloat:Comment'
 
   pin_augroup = vim.api.nvim_create_augroup('MiniharpPin', { clear = true })
   vim.api.nvim_create_autocmd({ 'BufEnter', 'VimResized' }, {
