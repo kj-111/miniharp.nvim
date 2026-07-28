@@ -66,19 +66,31 @@ local function build_lines()
   return lines, meta
 end
 
-local function apply_highlights(meta)
-  vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+---@param target_buf integer
+local function apply_highlights(target_buf, meta)
+  vim.api.nvim_buf_clear_namespace(target_buf, ns, 0, -1)
 
   if #state.marks == 0 then return end
 
   for i, row in ipairs(meta.rows) do
     if meta.current_idx == i then
-      vim.api.nvim_buf_set_extmark(buf, ns, row.line - 1, row.marker_start, {
+      vim.api.nvim_buf_set_extmark(target_buf, ns, row.line - 1, row.marker_start, {
         end_col = row.name_end,
         hl_group = 'String',
       })
     end
   end
+end
+
+---@param target_buf integer
+---@return string[], table
+local function set_lines(target_buf)
+  local lines, meta = build_lines()
+  vim.api.nvim_set_option_value('modifiable', true, { buf = target_buf })
+  vim.api.nvim_buf_set_lines(target_buf, 0, -1, false, lines)
+  vim.api.nvim_set_option_value('modifiable', false, { buf = target_buf })
+  apply_highlights(target_buf, meta)
+  return lines, meta
 end
 
 ---@return integer|nil
@@ -158,11 +170,7 @@ end
 render = function()
   if not has_buf(buf) then return end
 
-  local lines, meta = build_lines()
-  vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
-  apply_highlights(meta)
+  local lines = set_lines(buf)
 
   if has_win(state.ui_win) then
     local width, height, row, col = position_window(lines)
@@ -191,6 +199,99 @@ close = function()
   if has_win(origin) then pcall(vim.api.nvim_set_current_win, origin) end
 end
 
+-- ---- pinned outline: a small non-focusable float that stays open ----
+
+local pin_buf
+local pin_augroup
+local pin_min_width = 20
+
+local function render_pin()
+  if not has_buf(pin_buf) then return end
+
+  local lines = set_lines(pin_buf)
+
+  if not has_win(state.pin_win) then return end
+
+  local width = pin_min_width
+  for _, line in ipairs(lines) do
+    width = math.max(width, vim.fn.strdisplaywidth(line))
+  end
+  width = math.min(width, math.max(1, vim.o.columns - 4))
+  local height = math.min(#lines, math.max(1, vim.o.lines - 4))
+
+  vim.api.nvim_win_set_config(state.pin_win, {
+    relative = 'editor',
+    anchor = 'NE',
+    row = 1,
+    col = vim.o.columns - 1,
+    width = width,
+    height = height,
+  })
+end
+
+local function close_pin()
+  if pin_augroup then
+    pcall(vim.api.nvim_del_augroup_by_id, pin_augroup)
+    pin_augroup = nil
+  end
+
+  if has_win(state.pin_win) then pcall(vim.api.nvim_win_close, state.pin_win, true) end
+  state.pin_win = nil
+
+  if has_buf(pin_buf) then pcall(vim.api.nvim_buf_delete, pin_buf, { force = true }) end
+  pin_buf = nil
+end
+
+local function open_pin()
+  pin_buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_set_option_value('modifiable', false, { buf = pin_buf })
+  vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = pin_buf })
+  vim.api.nvim_set_option_value('filetype', 'miniharp', { buf = pin_buf })
+  vim.api.nvim_set_option_value('buftype', 'nofile', { buf = pin_buf })
+
+  state.pin_win = vim.api.nvim_open_win(pin_buf, false, {
+    relative = 'editor',
+    anchor = 'NE',
+    title = 'Portal',
+    title_pos = 'center',
+    row = 1,
+    col = vim.o.columns - 1,
+    width = pin_min_width,
+    height = 1,
+    style = 'minimal',
+    border = 'rounded',
+    focusable = false,
+    noautocmd = true,
+  })
+
+  local wo = vim.wo[state.pin_win]
+  wo.wrap = false
+  wo.number = false
+  wo.relativenumber = false
+  wo.signcolumn = 'no'
+
+  pin_augroup = vim.api.nvim_create_augroup('MiniharpPin', { clear = true })
+  vim.api.nvim_create_autocmd({ 'BufEnter', 'VimResized' }, {
+    group = pin_augroup,
+    callback = render_pin,
+    desc = 'miniharp: refresh pinned outline',
+  })
+
+  render_pin()
+end
+
+function M.is_pin_open() return has_win(state.pin_win) and has_buf(pin_buf) end
+
+function M.toggle_pin()
+  if M.is_pin_open() then
+    close_pin()
+    return
+  end
+
+  close_pin()
+  open_pin()
+end
+
 function M.is_open() return has_win(state.ui_win) and has_buf(buf) end
 
 function M.close()
@@ -199,8 +300,8 @@ function M.close()
 end
 
 function M.refresh()
-  if not M.is_open() then return end
-  render()
+  if M.is_open() then render() end
+  if M.is_pin_open() then render_pin() end
 end
 
 function M.open()

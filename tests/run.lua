@@ -74,6 +74,22 @@ vim.cmd('Miniharp toggle')
 assert(#state.marks == 0, ':Miniharp toggle should remove the mark')
 vim.cmd('Miniharp toggle')
 
+-- pinned outline: stays open, follows the current buffer, live-updates
+miniharp.toggle_pin()
+assert(ui.is_pin_open(), 'pin should be open')
+local pin_lines = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.pin_win), 0, -1, false)
+assert(pin_lines[1]:find('core%.lua'), 'pin should list core.lua, got: ' .. pin_lines[1])
+assert(pin_lines[1]:sub(1, 1) == '*', 'pin should mark the current file, got: ' .. pin_lines[1])
+vim.cmd('edit lua/miniharp/marks.lua')
+miniharp.toggle_file()
+pin_lines = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(state.pin_win), 0, -1, false)
+assert(#pin_lines == 2, 'pin should live-update after adding a mark')
+assert(pin_lines[2]:find('marks%.lua'), 'pin should list the new mark')
+miniharp.toggle_file()
+vim.cmd('edit lua/miniharp/core.lua')
+miniharp.toggle_pin()
+assert(not ui.is_pin_open(), 'pin should toggle closed')
+
 -- save/load round-trip
 assert(storage.save())
 state.marks = {}

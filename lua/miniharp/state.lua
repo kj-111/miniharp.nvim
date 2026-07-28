@@ -12,6 +12,7 @@ local utils = require('miniharp.utils')
 ---@field augroup? integer
 ---@field ui_win? integer
 ---@field ui_origin_win? integer
+---@field pin_win? integer
 
 local M ---@type MiniharpState
 
@@ -22,6 +23,7 @@ M = {
   augroup = nil,
   ui_win = nil,
   ui_origin_win = nil,
+  pin_win = nil,
 }
 
 return M

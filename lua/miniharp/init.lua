@@ -93,6 +93,9 @@ function M.show_list()
   ui.open({})
 end
 
+---Toggle the pinned outline: a small read-only float that stays open.
+function M.toggle_pin() ui.toggle_pin() end
+
 ---@class MiniharpOpts
 ---@field notify? boolean -- show info notifications for add/remove/jump/restore (default: true)
 
