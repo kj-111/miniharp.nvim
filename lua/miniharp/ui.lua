@@ -188,13 +188,6 @@ end
 local pin_buf
 local pin_augroup
 
--- glued to the bottom-right corner, directly above the statusline
----@return integer row, integer col
-local function pin_position()
-  local row = vim.o.lines - vim.o.cmdheight - (vim.o.laststatus == 0 and 0 or 1)
-  return math.max(1, row), vim.o.columns
-end
-
 local function render_pin()
   if not has_buf(pin_buf) then return end
 
@@ -207,17 +200,15 @@ local function render_pin()
   for _, line in ipairs(lines) do
     width = math.max(width, vim.fn.strdisplaywidth(line))
   end
-  width = math.min(width, math.max(1, vim.o.columns - 4))
-  local height = math.min(#lines, math.max(1, vim.o.lines - 4))
 
-  local row, col = pin_position()
+  -- glued to the bottom-right corner, directly above the statusline
   vim.api.nvim_win_set_config(state.pin_win, {
     relative = 'editor',
     anchor = 'SE',
-    row = row,
-    col = col,
-    width = width,
-    height = height,
+    row = math.max(1, vim.o.lines - vim.o.cmdheight - (vim.o.laststatus == 0 and 0 or 1)),
+    col = vim.o.columns,
+    width = math.min(width, vim.o.columns),
+    height = math.min(#lines, math.max(1, vim.o.lines - 4)),
   })
 end
 
@@ -237,17 +228,17 @@ end
 local function open_pin()
   pin_buf = scratch_buf()
 
-  -- placeholder size: render_pin() below sizes it to fit
-  local row, col = pin_position()
+  -- placeholder geometry: render_pin() below positions and sizes it.
+  -- border only on the sides facing the editor (top + left), so the
+  -- pin still sits flush against the statusline and screen edge
   state.pin_win = vim.api.nvim_open_win(pin_buf, false, {
     relative = 'editor',
-    anchor = 'SE',
-    row = row,
-    col = col,
+    row = 0,
+    col = 0,
     width = 1,
     height = 1,
     style = 'minimal',
-    border = 'none',
+    border = { '╭', '─', '─', '', '', '', '', '│' },
     focusable = false,
     noautocmd = true,
   })
@@ -257,10 +248,9 @@ local function open_pin()
   wo.number = false
   wo.relativenumber = false
   wo.signcolumn = 'no'
-  -- keep the outline unobtrusive: text and border in the dimmest
-  -- standard group (opaque, so scrolling underneath never changes
-  -- how it looks)
-  wo.winhighlight = 'NormalFloat:NonText,FloatBorder:NonText'
+  -- keep the outline unobtrusive: dimmest text, slightly more visible
+  -- border (opaque, so scrolling underneath never changes how it looks)
+  wo.winhighlight = 'NormalFloat:NonText,FloatBorder:Comment'
 
   pin_augroup = vim.api.nvim_create_augroup('MiniharpPin', { clear = true })
   vim.api.nvim_create_autocmd({ 'BufEnter', 'VimResized' }, {
