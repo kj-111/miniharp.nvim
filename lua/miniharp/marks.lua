@@ -31,6 +31,25 @@ function M.remove_at(i)
   return true, mark
 end
 
+---Swap mark i with its neighbour at i + delta.
+---@param i integer
+---@param delta integer
+---@return integer|nil new_index
+function M.move(i, delta)
+  local j = i + delta
+  if not state.marks[i] or not state.marks[j] then return end
+
+  state.marks[i], state.marks[j] = state.marks[j], state.marks[i]
+
+  if state.idx == i then
+    state.idx = j
+  elseif state.idx == j then
+    state.idx = i
+  end
+
+  return j
+end
+
 ---@param i integer
 ---@return boolean, string?
 function M.jump_to(i)

@@ -51,6 +51,24 @@ feed('l')
 assert(not ui.is_open(), 'l should jump and close the list')
 assert(vim.fn.expand('%:t') == 'core.lua', 'l should open the mark under the cursor')
 
+-- reorder with <C-j>/<C-k>
+vim.cmd('edit lua/miniharp/init.lua')
+miniharp.toggle_file()
+assert(#state.marks == 2, 'expected 2 marks before reordering')
+assert(vim.fn.fnamemodify(state.marks[1].file, ':t') == 'core.lua', 'core.lua should start as mark 1')
+miniharp.show_list()
+vim.api.nvim_win_set_cursor(state.ui_win, { 1, 0 })
+feed('<C-j>')
+assert(vim.fn.fnamemodify(state.marks[2].file, ':t') == 'core.lua', 'C-j should move the mark down')
+feed('<C-k>')
+assert(vim.fn.fnamemodify(state.marks[1].file, ':t') == 'core.lua', 'C-k should move the mark back up')
+feed('<C-k>') -- at the top edge: no-op
+assert(vim.fn.fnamemodify(state.marks[1].file, ':t') == 'core.lua', 'C-k at the top should do nothing')
+miniharp.show_list()
+vim.cmd('edit lua/miniharp/init.lua')
+miniharp.toggle_file()
+vim.cmd('edit lua/miniharp/core.lua')
+
 -- user command
 vim.cmd('Miniharp toggle')
 assert(#state.marks == 0, ':Miniharp toggle should remove the mark')

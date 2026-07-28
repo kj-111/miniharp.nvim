@@ -126,6 +126,21 @@ local function remove_cursor_mark()
   end
 end
 
+---@param delta integer
+local function move_cursor_mark(delta)
+  local index = cursor_mark_index()
+  if not index then return end
+
+  local j = marks.move(index, delta)
+  if not j then return end
+
+  render()
+
+  local _, meta = build_lines()
+  local row = meta.rows[j]
+  if row then pcall(vim.api.nvim_win_set_cursor, state.ui_win, { row.line, 0 }) end
+end
+
 local function position_window(lines)
   local width = default_width
   for _, line in ipairs(lines) do
@@ -241,6 +256,18 @@ function M.open()
     silent = true,
     nowait = true,
     desc = 'miniharp: remove mark under cursor',
+  })
+  vim.keymap.set('n', '<C-j>', function() move_cursor_mark(1) end, {
+    buffer = buf,
+    silent = true,
+    nowait = true,
+    desc = 'miniharp: move mark down',
+  })
+  vim.keymap.set('n', '<C-k>', function() move_cursor_mark(-1) end, {
+    buffer = buf,
+    silent = true,
+    nowait = true,
+    desc = 'miniharp: move mark up',
   })
   render()
 end
