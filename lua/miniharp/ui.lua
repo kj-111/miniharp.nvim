@@ -252,8 +252,6 @@ local function open_pin()
   state.pin_win = vim.api.nvim_open_win(pin_buf, false, {
     relative = 'editor',
     anchor = 'NE',
-    title = 'Portal',
-    title_pos = 'center',
     row = 1,
     col = vim.o.columns - 1,
     width = pin_min_width,
@@ -320,8 +318,6 @@ function M.open()
 
   local win = vim.api.nvim_open_win(buf, true, {
     relative = 'editor',
-    title = 'Portal',
-    title_pos = 'center',
     row = row,
     col = col,
     width = width,
