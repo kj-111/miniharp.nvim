@@ -258,7 +258,7 @@ local function open_pin()
     width = pin_min_width,
     height = 1,
     style = 'minimal',
-    border = 'none',
+    border = 'rounded',
     focusable = false,
     noautocmd = true,
   })
