@@ -98,6 +98,7 @@ function M.toggle_pin() ui.toggle_pin() end
 
 ---@class MiniharpOpts
 ---@field notify? boolean -- show info notifications for add/remove/jump/restore (default: true)
+---@field pin? boolean -- open the pinned outline on startup (default: false)
 
 ---Setup miniharp.
 ---@param opts? MiniharpOpts
@@ -106,6 +107,19 @@ function M.setup(opts)
   if opts.notify ~= nil then log.enabled = opts.notify end
 
   ensure_position_tracking()
+
+  if opts.pin then
+    if vim.v.vim_did_enter == 1 then
+      ui.toggle_pin()
+    else
+      vim.api.nvim_create_autocmd('VimEnter', {
+        group = state.augroup,
+        once = true,
+        callback = function() ui.toggle_pin() end,
+        desc = 'miniharp: open pinned outline on startup',
+      })
+    end
+  end
 
   local ok, err = storage.load()
   if ok then

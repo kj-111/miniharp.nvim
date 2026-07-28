@@ -27,6 +27,7 @@ local miniharp = require('miniharp')
 
 miniharp.setup({
   notify = true, -- show info messages on add/remove/jump/restore (default: true)
+  pin = false, -- open the pinned outline on startup (default: false)
 })
 
 vim.keymap.set('n', '<leader>m', miniharp.toggle_file, { desc = 'miniharp: toggle file mark' })
@@ -49,7 +50,7 @@ There is also a `:Miniharp` command: `toggle`, `list` (default), `next`, `prev`,
 
 ## API
 
-- `setup(opts?)` – Initialize the plugin. `opts.notify = false` silences info messages (warnings always show).
+- `setup(opts?)` – Initialize the plugin. `opts.notify = false` silences info messages (warnings always show); `opts.pin = true` opens the pinned outline on startup.
 - `toggle_file()` – Toggle a mark for the current file.
 - `next()` / `prev()` – Jump to next/previous file mark (wraps).
 - `jump(i)` – Jump straight to mark `i`.
