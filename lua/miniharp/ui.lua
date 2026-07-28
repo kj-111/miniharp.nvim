@@ -247,7 +247,7 @@ local function open_pin()
     width = 1,
     height = 1,
     style = 'minimal',
-    border = 'single',
+    border = 'none',
     focusable = false,
     noautocmd = true,
   })
