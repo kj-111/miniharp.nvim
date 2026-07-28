@@ -78,7 +78,6 @@ end
 local function unfocus()
   if not focused() then return end
 
-  vim.wo[state.pin_win].cursorline = false
   if has_win(state.origin_win) then pcall(vim.api.nvim_set_current_win, state.origin_win) end
   state.origin_win = nil
   render()
@@ -211,7 +210,6 @@ function M.focus_pin()
 
   state.origin_win = vim.api.nvim_get_current_win()
   vim.api.nvim_set_current_win(state.pin_win)
-  vim.wo[state.pin_win].cursorline = true
   pcall(vim.api.nvim_win_set_cursor, state.pin_win, { current_index() or 1, 0 })
   render()
 end
