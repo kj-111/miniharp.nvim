@@ -16,6 +16,16 @@ local function has_win(id) return id and vim.api.nvim_win_is_valid(id) end
 
 local function has_buf(id) return id and vim.api.nvim_buf_is_valid(id) end
 
+---@return integer
+local function scratch_buf()
+  local b = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_set_option_value('modifiable', false, { buf = b })
+  vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = b })
+  vim.api.nvim_set_option_value('filetype', 'miniharp', { buf = b })
+  vim.api.nvim_set_option_value('buftype', 'nofile', { buf = b })
+  return b
+end
+
 ---@param compact? boolean -- pin style: no marker column, "1 name" rows
 ---@return string[], table
 local function build_lines(compact)
@@ -53,7 +63,6 @@ local function build_lines(compact)
       local row_meta = {
         index = i,
         line = #lines + 1,
-        marker_start = 0,
         name_end = #row,
       }
 
@@ -73,7 +82,7 @@ local function apply_highlights(target_buf, meta)
 
   for i, row in ipairs(meta.rows) do
     if meta.current_idx == i then
-      vim.api.nvim_buf_set_extmark(target_buf, ns, row.line - 1, row.marker_start, {
+      vim.api.nvim_buf_set_extmark(target_buf, ns, row.line - 1, 0, {
         end_col = row.name_end,
         hl_group = 'String',
       })
@@ -203,8 +212,13 @@ end
 
 local pin_buf
 local pin_augroup
--- shrink-to-fit: the window is exactly as wide as its longest row
-local pin_min_width = 1
+
+-- glued to the bottom-right corner, directly above the statusline
+---@return integer row, integer col
+local function pin_position()
+  local row = vim.o.lines - vim.o.cmdheight - (vim.o.laststatus == 0 and 0 or 1)
+  return math.max(1, row), vim.o.columns
+end
 
 local function render_pin()
   if not has_buf(pin_buf) then return end
@@ -213,18 +227,20 @@ local function render_pin()
 
   if not has_win(state.pin_win) then return end
 
-  local width = pin_min_width
+  -- shrink-to-fit: exactly as wide as the longest row
+  local width = 1
   for _, line in ipairs(lines) do
     width = math.max(width, vim.fn.strdisplaywidth(line))
   end
   width = math.min(width, math.max(1, vim.o.columns - 4))
   local height = math.min(#lines, math.max(1, vim.o.lines - 4))
 
+  local row, col = pin_position()
   vim.api.nvim_win_set_config(state.pin_win, {
     relative = 'editor',
     anchor = 'SE',
-    row = math.max(1, vim.o.lines - vim.o.cmdheight - (vim.o.laststatus == 0 and 0 or 1)),
-    col = vim.o.columns,
+    row = row,
+    col = col,
     width = width,
     height = height,
   })
@@ -244,18 +260,16 @@ local function close_pin()
 end
 
 local function open_pin()
-  pin_buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_set_option_value('modifiable', false, { buf = pin_buf })
-  vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = pin_buf })
-  vim.api.nvim_set_option_value('filetype', 'miniharp', { buf = pin_buf })
-  vim.api.nvim_set_option_value('buftype', 'nofile', { buf = pin_buf })
+  pin_buf = scratch_buf()
 
+  -- placeholder size: render_pin() below sizes it to fit
+  local row, col = pin_position()
   state.pin_win = vim.api.nvim_open_win(pin_buf, false, {
     relative = 'editor',
     anchor = 'SE',
-    row = math.max(1, vim.o.lines - vim.o.cmdheight - (vim.o.laststatus == 0 and 0 or 1)),
-    col = vim.o.columns,
-    width = pin_min_width,
+    row = row,
+    col = col,
+    width = 1,
     height = 1,
     style = 'minimal',
     border = 'single',
@@ -311,11 +325,7 @@ function M.open()
 
   state.ui_origin_win = vim.api.nvim_get_current_win()
 
-  buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
-  vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = buf })
-  vim.api.nvim_set_option_value('filetype', 'miniharp', { buf = buf })
-  vim.api.nvim_set_option_value('buftype', 'nofile', { buf = buf })
+  buf = scratch_buf()
 
   local lines = build_lines()
   local width, height, row, col = position_window(lines)
