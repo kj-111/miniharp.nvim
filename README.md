@@ -8,7 +8,7 @@
 - Jump to the next or previous mark.
 - Remember cursor positions and restore marks per cwd.
 - Show a tiny focused list in the center.
-- Pin a read-only outline in the top-right corner that stays open while you work.
+- Pin a read-only outline in the bottom-right corner that stays open while you work.
 
 The list uses `l` to jump, `dd` to remove, `<C-j>`/`<C-k>` to reorder, and `q` to close.
 
@@ -55,7 +55,7 @@ There is also a `:Miniharp` command: `toggle`, `list` (default), `next`, `prev`,
 - `next()` / `prev()` – Jump to next/previous file mark (wraps).
 - `jump(i)` – Jump straight to mark `i`.
 - `show_list()` – Toggle the floating list.
-- `toggle_pin()` – Toggle the pinned outline (top-right, non-focusable, live-updating).
+- `toggle_pin()` – Toggle the pinned outline (bottom-right, non-focusable, live-updating). The current file shows a `*` instead of its number.
 
 ## Development
 

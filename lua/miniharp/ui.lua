@@ -6,7 +6,6 @@ local state = require('miniharp.state')
 local utils = require('miniharp.utils')
 local log = require('miniharp.log')
 
-local ns = vim.api.nvim_create_namespace('MiniharpUI')
 local buf
 local render, close
 local default_width = 42
@@ -34,7 +33,6 @@ local function build_lines(compact)
   local current_idx
   local meta = {
     rows = {},
-    current_idx = nil,
   }
 
   if has_win(state.ui_origin_win) then
@@ -51,43 +49,21 @@ local function build_lines(compact)
     end
   end
 
-  meta.current_idx = current_idx
-
   if #state.marks == 0 then
     lines[#lines + 1] = ''
   else
     for i, m in ipairs(state.marks) do
       local name = vim.fn.fnamemodify(m.file, ':t')
-      local prefix = compact and string.format('%d ', i) or string.format('%d. ', i)
-      local row = prefix .. name
-      local row_meta = {
-        index = i,
-        line = #lines + 1,
-        name_end = #row,
-      }
+      -- the current file shows a star where its number would be
+      local id = current_idx == i and '*' or tostring(i)
+      local prefix = compact and (id .. ' ') or (id .. '. ')
 
-      lines[#lines + 1] = row
-      meta.rows[i] = row_meta
+      lines[#lines + 1] = prefix .. name
+      meta.rows[i] = { index = i, line = #lines }
     end
   end
 
   return lines, meta
-end
-
----@param target_buf integer
-local function apply_highlights(target_buf, meta)
-  vim.api.nvim_buf_clear_namespace(target_buf, ns, 0, -1)
-
-  if #state.marks == 0 then return end
-
-  for i, row in ipairs(meta.rows) do
-    if meta.current_idx == i then
-      vim.api.nvim_buf_set_extmark(target_buf, ns, row.line - 1, 0, {
-        end_col = row.name_end,
-        hl_group = 'String',
-      })
-    end
-  end
 end
 
 ---@param target_buf integer
@@ -98,7 +74,6 @@ local function set_lines(target_buf, compact)
   vim.api.nvim_set_option_value('modifiable', true, { buf = target_buf })
   vim.api.nvim_buf_set_lines(target_buf, 0, -1, false, lines)
   vim.api.nvim_set_option_value('modifiable', false, { buf = target_buf })
-  apply_highlights(target_buf, meta)
   return lines, meta
 end
 

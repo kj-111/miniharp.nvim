@@ -80,8 +80,6 @@ function M.jump_to(i)
     pcall(vim.api.nvim_win_set_cursor, 0, { lnum, mark.col })
   end)
 
-  log.info('mark %d/%d %s', i, #state.marks, utils.pretty(mark.file))
-
   return true
 end
 
