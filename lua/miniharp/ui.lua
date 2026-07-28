@@ -257,8 +257,8 @@ local function open_pin()
   wo.number = false
   wo.relativenumber = false
   wo.signcolumn = 'no'
-  -- keep the outline unobtrusive: dimmed text, blended background
-  wo.winblend = 30
+  -- keep the outline unobtrusive: dimmed text (opaque, so scrolling
+  -- underneath never changes how it looks)
   wo.winhighlight = 'NormalFloat:Comment'
 
   pin_augroup = vim.api.nvim_create_augroup('MiniharpPin', { clear = true })
