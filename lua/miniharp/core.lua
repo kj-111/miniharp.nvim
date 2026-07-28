@@ -86,4 +86,15 @@ function M.next() cycle(1) end
 
 function M.prev() cycle(-1) end
 
+---Jump directly to mark #i.
+---@param i integer
+function M.jump(i)
+  if type(i) ~= 'number' or i < 1 or i % 1 ~= 0 then
+    log.warn('jump expects a positive mark number')
+    return
+  end
+
+  if marks.jump_to(i) then ui.refresh() end
+end
+
 return M

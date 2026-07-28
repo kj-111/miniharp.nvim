@@ -52,7 +52,11 @@ local function ensure_dirchange()
       local ok, err = storage.save(old_cwd)
       if not ok then
         -- keep the old session active so marks aren't lost; a later save can retry
-        log.warn('save failed for %s - %s (keeping current marks)', vim.fn.fnamemodify(old_cwd, ':~:.'), err or 'unknown error')
+        log.warn(
+          'save failed for %s - %s (keeping current marks)',
+          vim.fn.fnamemodify(old_cwd, ':~:.'),
+          err or 'unknown error'
+        )
         return
       end
 
@@ -62,7 +66,9 @@ local function ensure_dirchange()
 
       ok, err = storage.load(new_cwd)
       if ok then
-        if #state.marks > 0 then log.info('restored %d mark(s) for %s', #state.marks, vim.fn.fnamemodify(new_cwd, ':~')) end
+        if #state.marks > 0 then
+          log.info('restored %d mark(s) for %s', #state.marks, vim.fn.fnamemodify(new_cwd, ':~'))
+        end
       elseif not is_missing_session(err) then
         log.warn('%s', err or 'unknown error')
       end
@@ -76,6 +82,7 @@ end
 M.toggle_file = core.toggle_file
 M.next = core.next
 M.prev = core.prev
+M.jump = core.jump
 
 function M.show_list()
   if ui.is_open() then
