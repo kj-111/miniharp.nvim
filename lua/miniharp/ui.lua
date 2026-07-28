@@ -238,7 +238,7 @@ local function open_pin()
     width = 1,
     height = 1,
     style = 'minimal',
-    border = { '╭', '─', '─', '', '', '', '', '│' },
+    border = { '┌', '─', '─', '', '', '', '', '│' },
     focusable = false,
     noautocmd = true,
   })
@@ -248,9 +248,10 @@ local function open_pin()
   wo.number = false
   wo.relativenumber = false
   wo.signcolumn = 'no'
-  -- keep the outline unobtrusive: dimmest text, slightly more visible
-  -- border (opaque, so scrolling underneath never changes how it looks)
-  wo.winhighlight = 'NormalFloat:NonText,FloatBorder:Comment'
+  -- keep the outline unobtrusive: text and border in the dimmest
+  -- standard group (opaque, so scrolling underneath never changes
+  -- how it looks)
+  wo.winhighlight = 'NormalFloat:NonText,FloatBorder:NonText'
 
   pin_augroup = vim.api.nvim_create_augroup('MiniharpPin', { clear = true })
   vim.api.nvim_create_autocmd({ 'BufEnter', 'VimResized' }, {
