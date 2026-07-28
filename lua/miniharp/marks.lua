@@ -1,5 +1,6 @@
 local state = require('miniharp.state')
 local utils = require('miniharp.utils')
+local log = require('miniharp.log')
 
 local uv = vim.uv or vim.loop
 
@@ -35,13 +36,13 @@ end
 function M.jump_to(i)
   local mark = state.marks[i]
   if not mark then
-    vim.notify('miniharp: no mark #' .. tostring(i), vim.log.levels.WARN)
+    log.warn('no mark #%s', tostring(i))
     return false, 'missing-mark'
   end
 
   if not uv.fs_stat(mark.file) then
     M.remove_at(i)
-    vim.notify(('miniharp: removed missing mark %s'):format(utils.pretty(mark.file)), vim.log.levels.WARN)
+    log.warn('removed missing mark %s', utils.pretty(mark.file))
     return false, 'missing-file'
   end
 
@@ -59,6 +60,8 @@ function M.jump_to(i)
     local lnum = math.min(mark.lnum, maxline)
     pcall(vim.api.nvim_win_set_cursor, 0, { lnum, mark.col })
   end)
+
+  log.info('mark %d/%d %s', i, #state.marks, utils.pretty(mark.file))
 
   return true
 end

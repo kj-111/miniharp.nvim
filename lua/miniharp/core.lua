@@ -2,6 +2,7 @@ local state = require('miniharp.state')
 local ui = require('miniharp.ui')
 local utils = require('miniharp.utils')
 local marks = require('miniharp.marks')
+local log = require('miniharp.log')
 
 ---@class MiniharpMarks
 local M = {}
@@ -14,7 +15,10 @@ end
 
 ---@param step integer
 local function cycle(step)
-  if #state.marks == 0 then return end
+  if #state.marks == 0 then
+    log.info('no marks yet, use toggle_file to add one')
+    return
+  end
 
   local cursor = state.idx
   if cursor < 0 then cursor = 0 end
@@ -49,7 +53,7 @@ end
 function M.toggle_file()
   local file = utils.bufname()
   if file == '' then
-    vim.notify('miniharp: cannot mark an unnamed buffer', vim.log.levels.WARN)
+    log.warn('cannot mark an unnamed buffer')
     return
   end
 
@@ -57,9 +61,11 @@ function M.toggle_file()
 
   if i then
     marks.remove_at(i)
+    log.info('removed %s (%d left)', utils.pretty(file), #state.marks)
   else
     local l, c = utils.cursor()
     add_mark({ file = file, lnum = l, col = c })
+    log.info('added %s as mark %d', utils.pretty(file), #state.marks)
   end
 
   ui.refresh()

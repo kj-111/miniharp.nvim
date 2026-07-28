@@ -24,7 +24,9 @@ vim.pack.add({
 ```lua
 local miniharp = require('miniharp')
 
-miniharp.setup()
+miniharp.setup({
+  notify = true, -- show info messages on add/remove/jump/restore (default: true)
+})
 
 vim.keymap.set('n', '<leader>m', miniharp.toggle_file, { desc = 'miniharp: toggle file mark' })
 vim.keymap.set('n', '<C-n>',     miniharp.next,        { desc = 'miniharp: next file mark' })
@@ -34,7 +36,7 @@ vim.keymap.set('n', '<leader>l', miniharp.show_list,   { desc = 'miniharp: toggl
 
 ## API
 
-- `setup()` – Initialize the plugin.
+- `setup(opts?)` – Initialize the plugin. `opts.notify = false` silences info messages (warnings always show).
 - `toggle_file()` – Toggle a mark for the current file.
 - `next()` / `prev()` – Jump to next/previous file mark (wraps).
 - `show_list()` – Toggle the floating list.

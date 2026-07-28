@@ -6,6 +6,7 @@ local utils = require('miniharp.utils')
 local core = require('miniharp.core')
 local storage = require('miniharp.storage')
 local ui = require('miniharp.ui')
+local log = require('miniharp.log')
 
 local function is_missing_session(err) return err and string.find(err, 'no session file for cwd', 1, true) end
 
@@ -50,10 +51,9 @@ local function ensure_dirchange()
 
       local ok, err = storage.save(old_cwd)
       if not ok then
-        vim.notify(
-          ('miniharp: save failed for %s - %s'):format(vim.fn.fnamemodify(old_cwd, ':~:.'), err or 'unknown error'),
-          vim.log.levels.WARN
-        )
+        -- keep the old session active so marks aren't lost; a later save can retry
+        log.warn('save failed for %s - %s (keeping current marks)', vim.fn.fnamemodify(old_cwd, ':~:.'), err or 'unknown error')
+        return
       end
 
       state.marks = {}
@@ -61,8 +61,10 @@ local function ensure_dirchange()
       ui.refresh()
 
       ok, err = storage.load(new_cwd)
-      if not ok and not is_missing_session(err) then
-        vim.notify('miniharp: ' .. (err or 'unknown error'), vim.log.levels.WARN)
+      if ok then
+        if #state.marks > 0 then log.info('restored %d mark(s) for %s', #state.marks, vim.fn.fnamemodify(new_cwd, ':~')) end
+      elseif not is_missing_session(err) then
+        log.warn('%s', err or 'unknown error')
       end
 
       state.cwd = new_cwd
@@ -84,13 +86,22 @@ function M.show_list()
   ui.open({})
 end
 
+---@class MiniharpOpts
+---@field notify? boolean -- show info notifications for add/remove/jump/restore (default: true)
+
 ---Setup miniharp.
-function M.setup()
+---@param opts? MiniharpOpts
+function M.setup(opts)
+  opts = opts or {}
+  if opts.notify ~= nil then log.enabled = opts.notify end
+
   ensure_position_tracking()
 
   local ok, err = storage.load()
-  if not ok then
-    if not is_missing_session(err) then vim.notify('miniharp: ' .. (err or 'unknown error'), vim.log.levels.WARN) end
+  if ok then
+    if #state.marks > 0 then log.info('restored %d mark(s) for cwd', #state.marks) end
+  elseif not is_missing_session(err) then
+    log.warn('%s', err or 'unknown error')
   end
 
   ensure_persist_on_exit()

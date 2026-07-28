@@ -4,9 +4,10 @@ local M = {}
 local marks = require('miniharp.marks')
 local state = require('miniharp.state')
 local utils = require('miniharp.utils')
+local log = require('miniharp.log')
 
 local ns = vim.api.nvim_create_namespace('MiniharpUI')
-local win, buf
+local buf
 local render, close
 local default_width = 42
 local default_height = 5
@@ -54,11 +55,7 @@ local function build_lines()
         index = i,
         line = #lines + 1,
         marker_start = 0,
-        marker_end = 1,
-        number_start = 2,
-        number_end = #prefix,
-        name_start = #prefix,
-        name_end = #prefix + #name,
+        name_end = #row,
       }
 
       lines[#lines + 1] = row
@@ -76,18 +73,19 @@ local function apply_highlights(meta)
 
   for i, row in ipairs(meta.rows) do
     if meta.current_idx == i then
-      vim.api.nvim_buf_add_highlight(buf, ns, 'String', row.line - 1, row.marker_start, row.marker_end)
-      vim.api.nvim_buf_add_highlight(buf, ns, 'String', row.line - 1, row.number_start, row.number_end)
-      vim.api.nvim_buf_add_highlight(buf, ns, 'String', row.line - 1, row.name_start, row.name_end)
+      vim.api.nvim_buf_set_extmark(buf, ns, row.line - 1, row.marker_start, {
+        end_col = row.name_end,
+        hl_group = 'String',
+      })
     end
   end
 end
 
 ---@return integer|nil
 local function cursor_mark_index()
-  if not has_win(win) then return end
+  if not has_win(state.ui_win) then return end
 
-  local line = vim.api.nvim_win_get_cursor(win)[1]
+  local line = vim.api.nvim_win_get_cursor(state.ui_win)[1]
   local _, meta = build_lines()
   for _, row in ipairs(meta.rows) do
     if row.line == line then return row.index end
@@ -96,10 +94,10 @@ end
 
 ---@param cursor integer[]
 local function restore_cursor(cursor)
-  if not has_win(win) then return end
+  if not has_win(state.ui_win) then return end
 
   local maxline = vim.api.nvim_buf_line_count(buf)
-  pcall(vim.api.nvim_win_set_cursor, win, { math.min(cursor[1], maxline), cursor[2] })
+  pcall(vim.api.nvim_win_set_cursor, state.ui_win, { math.min(cursor[1], maxline), cursor[2] })
 end
 
 local function jump_to_cursor_mark()
@@ -119,9 +117,10 @@ local function remove_cursor_mark()
   local index = cursor_mark_index()
   if not index then return end
 
-  local cursor = vim.api.nvim_win_get_cursor(win)
-  local ok = marks.remove_at(index)
+  local cursor = vim.api.nvim_win_get_cursor(state.ui_win)
+  local ok, removed = marks.remove_at(index)
   if ok then
+    log.info('removed %s (%d left)', utils.pretty(removed.file), #state.marks)
     render()
     restore_cursor(cursor)
   end
@@ -150,9 +149,9 @@ render = function()
   vim.api.nvim_set_option_value('modifiable', false, { buf = buf })
   apply_highlights(meta)
 
-  if has_win(win) then
+  if has_win(state.ui_win) then
     local width, height, row, col = position_window(lines)
-    vim.api.nvim_win_set_config(win, {
+    vim.api.nvim_win_set_config(state.ui_win, {
       relative = 'editor',
       row = row,
       col = col,
@@ -164,19 +163,20 @@ end
 
 close = function()
   local origin = state.ui_origin_win
+  local ui_win = state.ui_win
 
   state.ui_win = nil
   state.ui_origin_win = nil
 
-  if has_win(win) then pcall(vim.api.nvim_win_close, win, true) end
+  if has_win(ui_win) then pcall(vim.api.nvim_win_close, ui_win, true) end
 
   if has_buf(buf) then pcall(vim.api.nvim_buf_delete, buf, { force = true }) end
 
-  win, buf = nil, nil
+  buf = nil
   if has_win(origin) then pcall(vim.api.nvim_set_current_win, origin) end
 end
 
-function M.is_open() return has_win(win) and has_buf(buf) end
+function M.is_open() return has_win(state.ui_win) and has_buf(buf) end
 
 function M.close()
   if not M.is_open() then return end
@@ -184,12 +184,12 @@ function M.close()
 end
 
 function M.refresh()
-  if not has_win(win) or not has_buf(buf) then return end
+  if not M.is_open() then return end
   render()
 end
 
 function M.open()
-  if has_win(win) then close() end
+  if has_win(state.ui_win) then close() end
 
   state.ui_origin_win = vim.api.nvim_get_current_win()
 
@@ -202,7 +202,7 @@ function M.open()
   local lines = build_lines()
   local width, height, row, col = position_window(lines)
 
-  win = vim.api.nvim_open_win(buf, true, {
+  local win = vim.api.nvim_open_win(buf, true, {
     relative = 'editor',
     title = 'Portal',
     title_pos = 'center',

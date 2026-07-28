@@ -26,9 +26,7 @@ local function session_path(cwd)
     key = norm_cwd:gsub('[^%w]+', '_')
   end
 
-  local dir = base_dir()
-  vim.fn.mkdir(dir, 'p')
-  return dir .. '/session-' .. key .. '.json'
+  return base_dir() .. '/session-' .. key .. '.json'
 end
 
 ---Save current marks for the cwd into stdpath('state'|'data')/miniharp/sessions.
@@ -42,11 +40,16 @@ function M.save(cwd)
   }
 
   local ok, json = pcall(utils.json_encode, payload)
-  if not ok then return false, 'miniharp: JSON encode failed' end
+  if not ok then return false, 'JSON encode failed' end
+
+  local mk_ok, made = pcall(vim.fn.mkdir, vim.fn.fnamemodify(path, ':h'), 'p')
+  if not mk_ok or made ~= 1 then return false, ('could not create %s'):format(vim.fn.fnamemodify(path, ':h')) end
 
   local lines = vim.split(json, '\n', { plain = true })
-  local w_ok, err = pcall(vim.fn.writefile, lines, path)
-  if not w_ok then return false, ('miniharp: write failed: %s'):format(err or path) end
+  local w_ok, res = pcall(vim.fn.writefile, lines, path)
+  if not w_ok then return false, ('write failed: %s'):format(res or path) end
+  -- writefile signals some failures via a -1 return instead of an error
+  if res ~= 0 then return false, ('write failed: %s'):format(path) end
 
   return true
 end
@@ -56,13 +59,13 @@ end
 ---@return boolean ok, string? err
 function M.load(cwd)
   local path = session_path(cwd)
-  if vim.fn.filereadable(path) ~= 1 then return false, 'miniharp: no session file for cwd' end
+  if vim.fn.filereadable(path) ~= 1 then return false, 'no session file for cwd' end
 
   local ok_read, content = pcall(function() return table.concat(vim.fn.readfile(path), '\n') end)
-  if not ok_read then return false, 'miniharp: read failed' end
+  if not ok_read then return false, 'read failed' end
 
   local ok_json, data = pcall(utils.json_decode, content)
-  if not ok_json or type(data) ~= 'table' then return false, 'miniharp: JSON decode failed' end
+  if not ok_json or type(data) ~= 'table' then return false, 'JSON decode failed' end
 
   local restored = {}
   if type(data.marks) == 'table' then
