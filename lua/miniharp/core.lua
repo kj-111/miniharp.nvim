@@ -49,9 +49,10 @@ end
 
 -- ---- public API ----
 
----Toggle a file mark for current buffer.
-function M.toggle_file()
-  local file = utils.bufname()
+---Toggle a file mark for the current buffer, or for `file` when given.
+---@param file? string
+function M.toggle_file(file)
+  file = file and utils.norm(file) or utils.bufname()
   if file == '' then
     log.warn('cannot mark an unnamed buffer')
     return
@@ -63,7 +64,10 @@ function M.toggle_file()
     marks.remove_at(i)
     log.info('removed %s (%d left)', utils.pretty(file), #state.marks)
   else
-    local l, c = utils.cursor()
+    local l, c = 1, 0
+    if file == utils.bufname() then
+      l, c = utils.cursor()
+    end
     add_mark({ file = file, lnum = l, col = c })
     log.info('added %s as mark %d', utils.pretty(file), #state.marks)
   end

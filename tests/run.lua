@@ -29,6 +29,14 @@ miniharp.toggle_file()
 assert(#state.marks == 1, 'expected toggle to remove the current file mark')
 miniharp.toggle_file()
 
+-- toggle by path (e.g. from a file explorer like oil.nvim)
+miniharp.toggle_file('lua/miniharp/marks.lua')
+assert(#state.marks == 3, 'toggle_file(path) should add a mark for another file')
+assert(vim.fn.fnamemodify(state.marks[3].file, ':t') == 'marks.lua', 'the path mark should point at marks.lua')
+assert(state.marks[3].lnum == 1, 'a path mark starts at line 1')
+miniharp.toggle_file('lua/miniharp/marks.lua')
+assert(#state.marks == 2, 'toggle_file(path) should remove an existing mark')
+
 -- direct jump
 vim.cmd('edit lua/miniharp/ui.lua')
 miniharp.jump(1)

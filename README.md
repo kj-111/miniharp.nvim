@@ -50,10 +50,23 @@ end
 
 There is also a `:Miniharp` command: `toggle`, `focus` (default), `next`, `prev`, `jump <n>`, `pin`.
 
+From [oil.nvim](https://github.com/stevearc/oil.nvim) you can mark the file under the cursor, via oil's own `keymaps`:
+
+```lua
+['<leader>m'] = {
+  callback = function()
+    local oil = require('oil')
+    local entry, dir = oil.get_cursor_entry(), oil.get_current_dir()
+    if entry and entry.type == 'file' and dir then require('miniharp').toggle_file(dir .. entry.name) end
+  end,
+  desc = 'miniharp: toggle mark for file under cursor',
+},
+```
+
 ## API
 
 - `setup(opts?)` – Initialize the plugin. `opts.notify = false` silences info messages (warnings always show); `opts.pin = true` opens the pinned outline on startup.
-- `toggle_file()` – Toggle a mark for the current file.
+- `toggle_file(file?)` – Toggle a mark for the current file, or for `file` when given (handy from a file explorer such as oil.nvim).
 - `next()` / `prev()` – Jump to next/previous file mark (wraps).
 - `jump(i)` – Jump straight to mark `i`.
 - `toggle_pin()` – Toggle the outline.
