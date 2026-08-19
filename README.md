@@ -12,7 +12,7 @@
 The menu is a normal modifiable buffer, so you edit the list with the vim you
 already know: `dd` removes, `ddp` or `:m` reorders, typing a path adds. `<CR>`
 or `l` opens the file under the cursor; `q` or `<Esc>` closes. The text is
-applied when the menu closes.
+applied when the menu closes, or on `:w` if you want to keep it open.
 
 ## Installation
 
@@ -65,7 +65,7 @@ From [oil.nvim](https://github.com/stevearc/oil.nvim) you can mark the file unde
 ## API
 
 - `setup(opts?)` – Initialize the plugin. `opts.notify = false` silences info messages (warnings always show).
-- `toggle_file(file?)` – Toggle a mark for the current file, or for `file` when given (handy from a file explorer such as oil.nvim).
+- `toggle_file(file?)` – Toggle a mark for the current file, or for `file` when given (handy from a file explorer such as oil.nvim). Buffers that are not files – a directory listing, a terminal, help – are refused.
 - `next()` / `prev()` – Jump to next/previous file mark (wraps).
 - `jump(i)` – Jump straight to mark `i`.
 - `toggle_menu()` – Toggle the mark list, a centred float you edit like any other buffer.
@@ -75,4 +75,6 @@ From [oil.nvim](https://github.com/stevearc/oil.nvim) you can mark the file unde
 - `make test` – headless end-to-end test (uses an isolated state dir).
 - `make lint` – `stylua --check`.
 
-Both run in CI on every push.
+Run both locally before pushing. The CI workflow exists but its jobs are
+currently blocked before they start any step, so a red badge there says
+nothing about the code.
