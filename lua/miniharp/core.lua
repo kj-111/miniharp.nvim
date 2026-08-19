@@ -1,5 +1,4 @@
 local state = require('miniharp.state')
-local ui = require('miniharp.ui')
 local utils = require('miniharp.utils')
 local marks = require('miniharp.marks')
 local log = require('miniharp.log')
@@ -30,10 +29,7 @@ local function cycle(step)
     if i < 1 then i = #state.marks end
 
     local ok, reason = marks.jump_to(i)
-    if ok then
-      ui.refresh()
-      return
-    end
+    if ok then return end
     if reason ~= 'missing-file' then return end
 
     attempts = attempts - 1
@@ -43,8 +39,6 @@ local function cycle(step)
       cursor = i
     end
   end
-
-  ui.refresh()
 end
 
 -- ---- public API ----
@@ -71,8 +65,6 @@ function M.toggle_file(file)
     add_mark({ file = file, lnum = l, col = c })
     log.info('added %s as mark %d', utils.pretty(file), #state.marks)
   end
-
-  ui.refresh()
 end
 
 ---Update last position for a file.
@@ -98,7 +90,7 @@ function M.jump(i)
     return
   end
 
-  if marks.jump_to(i) then ui.refresh() end
+  marks.jump_to(i)
 end
 
 return M

@@ -7,11 +7,12 @@
 - Toggle file marks for the current project.
 - Jump to the next or previous mark.
 - Remember cursor positions and restore marks per cwd.
-- A tiny outline glued to the bottom-right corner that stays open while you
-  work; the current file shows a `*` instead of its number.
+- A centred menu listing the marks, one path per line.
 
-Focus the outline to interact with it: `l` jumps (and brings you back to your
-code), `dd` removes, `<C-j>`/`<C-k>` reorder, `q` leaves.
+The menu is a normal modifiable buffer, so you edit the list with the vim you
+already know: `dd` removes, `ddp` or `:m` reorders, typing a path adds. `<CR>`
+opens the file under the cursor; `q` or `<Esc>` closes. The text is applied
+when the menu closes.
 
 ## Installation
 
@@ -28,14 +29,12 @@ local miniharp = require('miniharp')
 
 miniharp.setup({
   notify = true, -- show info messages on add/remove/jump/restore (default: true)
-  pin = false, -- open the pinned outline on startup (default: false)
 })
 
 vim.keymap.set('n', '<leader>m', miniharp.toggle_file, { desc = 'miniharp: toggle file mark' })
+vim.keymap.set('n', '<C-e>',     miniharp.toggle_menu, { desc = 'miniharp: toggle menu' })
 vim.keymap.set('n', '<C-n>',     miniharp.next,        { desc = 'miniharp: next file mark' })
 vim.keymap.set('n', '<C-p>',     miniharp.prev,        { desc = 'miniharp: prev file mark' })
-vim.keymap.set('n', '<leader>o', miniharp.toggle_pin,  { desc = 'miniharp: toggle outline' })
-vim.keymap.set('n', '<leader>p', miniharp.focus_pin,   { desc = 'miniharp: focus outline' })
 
 -- jump straight to a mark by number
 for i = 1, 4 do
@@ -48,7 +47,7 @@ end
 > distinguish Ctrl+number from a plain number. `<M-1>` (Alt) works nearly
 > everywhere, `<leader>1` always does.
 
-There is also a `:Miniharp` command: `toggle`, `focus` (default), `next`, `prev`, `jump <n>`, `pin`.
+There is also a `:Miniharp` command: `menu` (default), `toggle`, `next`, `prev`, `jump <n>`.
 
 From [oil.nvim](https://github.com/stevearc/oil.nvim) you can mark the file under the cursor, via oil's own `keymaps`:
 
@@ -65,12 +64,11 @@ From [oil.nvim](https://github.com/stevearc/oil.nvim) you can mark the file unde
 
 ## API
 
-- `setup(opts?)` – Initialize the plugin. `opts.notify = false` silences info messages (warnings always show); `opts.pin = true` opens the pinned outline on startup.
+- `setup(opts?)` – Initialize the plugin. `opts.notify = false` silences info messages (warnings always show).
 - `toggle_file(file?)` – Toggle a mark for the current file, or for `file` when given (handy from a file explorer such as oil.nvim).
 - `next()` / `prev()` – Jump to next/previous file mark (wraps).
 - `jump(i)` – Jump straight to mark `i`.
-- `toggle_pin()` – Toggle the outline.
-- `focus_pin()` – Enter the outline to interact with it (opens it when closed); entering while inside leaves it again.
+- `toggle_menu()` – Toggle the mark list, a centred float you edit like any other buffer.
 
 ## Development
 

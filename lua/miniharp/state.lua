@@ -10,8 +10,8 @@ local utils = require('miniharp.utils')
 ---@field cwd string
 ---@field idx integer
 ---@field augroup? integer
----@field pin_win? integer
----@field origin_win? integer -- window that had focus before entering the outline
+---@field menu_win? integer
+---@field origin_win? integer -- window the menu was opened from
 
 local M ---@type MiniharpState
 
@@ -20,7 +20,7 @@ M = {
   cwd = utils.norm(vim.fn.getcwd()),
   idx = 0,
   augroup = nil,
-  pin_win = nil,
+  menu_win = nil,
   origin_win = nil,
 }
 

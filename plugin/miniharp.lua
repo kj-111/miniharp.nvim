@@ -3,15 +3,14 @@ vim.g.loaded_miniharp = 1
 
 local subcommands = {
   toggle = function() require('miniharp').toggle_file() end,
-  focus = function() require('miniharp').focus_pin() end,
+  menu = function() require('miniharp').toggle_menu() end,
   next = function() require('miniharp').next() end,
   prev = function() require('miniharp').prev() end,
   jump = function(n) require('miniharp').jump(tonumber(n) or -1) end,
-  pin = function() require('miniharp').toggle_pin() end,
 }
 
 vim.api.nvim_create_user_command('Miniharp', function(opts)
-  local name = opts.fargs[1] or 'focus'
+  local name = opts.fargs[1] or 'menu'
   local subcommand = subcommands[name]
   if not subcommand then
     require('miniharp.log').warn('unknown subcommand: %s', name)
@@ -26,5 +25,5 @@ end, {
     table.sort(names)
     return vim.tbl_filter(function(name) return vim.startswith(name, arglead) end, names)
   end,
-  desc = 'miniharp: toggle|focus|next|prev|jump <n>|pin',
+  desc = 'miniharp: toggle|menu|next|prev|jump <n>',
 })

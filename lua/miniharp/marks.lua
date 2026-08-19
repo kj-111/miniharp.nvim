@@ -67,19 +67,10 @@ function M.jump_to(i)
 
   state.idx = i
 
-  -- jumping from inside the outline lands in the window it was entered from
-  local target_win = vim.api.nvim_get_current_win()
-  if state.pin_win and vim.api.nvim_win_is_valid(state.pin_win) and target_win == state.pin_win then
-    if state.origin_win and vim.api.nvim_win_is_valid(state.origin_win) then target_win = state.origin_win end
-  end
+  if utils.bufname() ~= mark.file then vim.cmd('edit ' .. vim.fn.fnameescape(mark.file)) end
 
-  vim.api.nvim_win_call(target_win, function()
-    if utils.bufname() ~= mark.file then vim.cmd('edit ' .. vim.fn.fnameescape(mark.file)) end
-
-    local maxline = vim.api.nvim_buf_line_count(0)
-    local lnum = math.min(mark.lnum, maxline)
-    pcall(vim.api.nvim_win_set_cursor, 0, { lnum, mark.col })
-  end)
+  local maxline = vim.api.nvim_buf_line_count(0)
+  pcall(vim.api.nvim_win_set_cursor, 0, { math.min(mark.lnum, maxline), mark.col })
 
   return true
 end

@@ -53,7 +53,6 @@ local function ensure_dirchange()
 
       state.marks = {}
       state.idx = 0
-      ui.refresh()
 
       ok, err = storage.load(new_cwd)
       if ok then
@@ -75,16 +74,12 @@ M.next = core.next
 M.prev = core.prev
 M.jump = core.jump
 
----Toggle the outline: a small float glued to the bottom-right that stays open.
-function M.toggle_pin() ui.toggle_pin() end
-
----Enter the outline to interact with it (l, dd, <C-j>/<C-k>, q);
----opens it first when closed. Entering while inside leaves it again.
-function M.focus_pin() ui.focus_pin() end
+---Toggle the mark list: a centred float you edit like any other buffer.
+---`<CR>` opens the file under the cursor; the text is applied when it closes.
+function M.toggle_menu() ui.toggle() end
 
 ---@class MiniharpOpts
 ---@field notify? boolean -- show info notifications for add/remove/jump/restore (default: true)
----@field pin? boolean -- open the pinned outline on startup (default: false)
 
 ---Setup miniharp.
 ---@param opts? MiniharpOpts
@@ -96,22 +91,6 @@ function M.setup(opts)
   state.augroup = vim.api.nvim_create_augroup('Miniharp', { clear = true })
 
   ensure_position_tracking()
-
-  if opts.pin then
-    local open_pin = function()
-      if not ui.is_pin_open() then ui.toggle_pin() end
-    end
-    if vim.v.vim_did_enter == 1 then
-      open_pin()
-    else
-      vim.api.nvim_create_autocmd('VimEnter', {
-        group = state.augroup,
-        once = true,
-        callback = open_pin,
-        desc = 'miniharp: open outline on startup',
-      })
-    end
-  end
 
   local ok, err = storage.load()
   if ok then

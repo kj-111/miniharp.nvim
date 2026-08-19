@@ -4,216 +4,205 @@ local M = {}
 local marks = require('miniharp.marks')
 local state = require('miniharp.state')
 local utils = require('miniharp.utils')
-local log = require('miniharp.log')
 
-local pin_buf
-local pin_augroup
-local render
+local ns = vim.api.nvim_create_namespace('miniharp')
+
+local menu_buf
+local menu_augroup
+local closing = false
 
 local function has_win(id) return id and vim.api.nvim_win_is_valid(id) end
 
 local function has_buf(id) return id and vim.api.nvim_buf_is_valid(id) end
 
-function M.is_pin_open() return has_win(state.pin_win) and has_buf(pin_buf) end
+function M.is_open() return has_win(state.menu_win) and has_buf(menu_buf) end
 
-local function focused() return M.is_pin_open() and vim.api.nvim_get_current_win() == state.pin_win end
-
--- the file the outline stars: the origin window's buffer while the
--- outline itself has focus, the current buffer otherwise
-local function current_file()
-  if focused() and has_win(state.origin_win) then return utils.bufname(vim.api.nvim_win_get_buf(state.origin_win)) end
-  return utils.bufname()
-end
-
+-- the file the menu stars: the buffer of the window it was opened from
 ---@return integer|nil
 local function current_index()
-  local file = current_file()
+  local file = has_win(state.origin_win) and utils.bufname(vim.api.nvim_win_get_buf(state.origin_win))
+    or utils.bufname()
   for i, m in ipairs(state.marks) do
     if m.file == file then return i end
   end
 end
 
----Build the list rows; row n is always mark n.
----@return string[]
-local function build_lines()
-  if #state.marks == 0 then return { '' } end
+---Read the list back out of the buffer; the text is the source of truth.
+local function sync()
+  if not has_buf(menu_buf) then return end
 
-  local current_idx = current_index()
-  local lines = {}
-  for i, m in ipairs(state.marks) do
-    -- the current file shows a star where its number would be
-    local id = current_idx == i and '*' or tostring(i)
-    lines[i] = id .. ' ' .. vim.fn.fnamemodify(m.file, ':t')
+  local previous = state.marks[state.idx]
+  local next_marks, seen = {}, {}
+
+  for _, line in ipairs(vim.api.nvim_buf_get_lines(menu_buf, 0, -1, false)) do
+    local path = vim.trim(line)
+    if path ~= '' then
+      local file = utils.norm(path)
+      if not seen[file] then
+        seen[file] = true
+        -- an existing mark keeps its remembered position, a typed one starts at the top
+        local _, mark = marks.find(file)
+        next_marks[#next_marks + 1] = mark or { file = file, lnum = 1, col = 0 }
+      end
+    end
   end
-  return lines
+
+  state.marks = next_marks
+
+  state.idx = 0
+  if previous then
+    for i, m in ipairs(next_marks) do
+      if m.file == previous.file then
+        state.idx = i
+        break
+      end
+    end
+  end
+
+  vim.api.nvim_set_option_value('modified', false, { buf = menu_buf })
 end
 
-render = function()
-  if not has_buf(pin_buf) then return end
+local function resize()
+  if not M.is_open() then return end
 
-  local lines = build_lines()
-  vim.api.nvim_set_option_value('modifiable', true, { buf = pin_buf })
-  vim.api.nvim_buf_set_lines(pin_buf, 0, -1, false, lines)
-  vim.api.nvim_set_option_value('modifiable', false, { buf = pin_buf })
-
-  if not has_win(state.pin_win) then return end
-
-  -- shrink-to-fit: exactly as wide as the longest row
-  local width = 1
-  for _, line in ipairs(lines) do
-    width = math.max(width, vim.fn.strdisplaywidth(line))
+  local count = vim.api.nvim_buf_line_count(menu_buf)
+  local width = 30
+  for _, line in ipairs(vim.api.nvim_buf_get_lines(menu_buf, 0, -1, false)) do
+    -- +3 for the number column and a column of slack for the cursor
+    width = math.max(width, vim.fn.strdisplaywidth(line) + 3)
   end
+  width = math.min(width, math.max(20, vim.o.columns - 4))
+  local height = math.min(count, math.max(1, vim.o.lines - 6))
 
-  -- glued to the bottom-right corner, directly above the statusline
-  vim.api.nvim_win_set_config(state.pin_win, {
+  vim.api.nvim_win_set_config(state.menu_win, {
     relative = 'editor',
-    anchor = 'SE',
-    row = math.max(1, vim.o.lines - vim.o.cmdheight - (vim.o.laststatus == 0 and 0 or 1)),
-    col = vim.o.columns,
-    width = math.min(width, vim.o.columns),
-    height = math.min(#lines, math.max(1, vim.o.lines - 4)),
+    width = width,
+    height = height,
+    row = math.max(0, math.floor((vim.o.lines - height) / 2) - 1),
+    col = math.max(0, math.floor((vim.o.columns - width) / 2)),
   })
 end
 
-local function unfocus()
-  if not focused() then return end
+local function close()
+  if closing then return end
+  closing = true
+
+  sync()
+
+  if menu_augroup then
+    pcall(vim.api.nvim_del_augroup_by_id, menu_augroup)
+    menu_augroup = nil
+  end
+
+  if has_win(state.menu_win) then pcall(vim.api.nvim_win_close, state.menu_win, true) end
+  state.menu_win = nil
+
+  if has_buf(menu_buf) then pcall(vim.api.nvim_buf_delete, menu_buf, { force = true }) end
+  menu_buf = nil
 
   if has_win(state.origin_win) then pcall(vim.api.nvim_set_current_win, state.origin_win) end
   state.origin_win = nil
-  render()
+
+  closing = false
 end
 
----@return integer|nil
-local function cursor_index()
-  local line = vim.api.nvim_win_get_cursor(state.pin_win)[1]
-  if state.marks[line] then return line end
+---Close the menu and open whatever file the cursor sits on.
+local function open_under_cursor()
+  local path = vim.trim(vim.api.nvim_get_current_line())
+  close()
+
+  if path == '' then return end
+  local i = marks.find(utils.norm(path))
+  if i then marks.jump_to(i) end
 end
 
-local function jump_to_cursor_mark()
-  local index = cursor_index()
-  if not index then return end
+local function open()
+  state.origin_win = vim.api.nvim_get_current_win()
 
-  if marks.jump_to(index) then unfocus() end
-  render()
-end
-
-local function remove_cursor_mark()
-  local index = cursor_index()
-  if not index then return end
-
-  local ok, removed = marks.remove_at(index)
-  if ok then
-    log.info('removed %s (%d left)', utils.pretty(removed.file), #state.marks)
-    render()
-    local maxline = vim.api.nvim_buf_line_count(pin_buf)
-    pcall(vim.api.nvim_win_set_cursor, state.pin_win, { math.min(index, maxline), 0 })
-  end
-end
-
----@param delta integer
-local function move_cursor_mark(delta)
-  local index = cursor_index()
-  if not index then return end
-
-  local j = marks.move(index, delta)
-  if not j then return end
-
-  render()
-  pcall(vim.api.nvim_win_set_cursor, state.pin_win, { j, 0 })
-end
-
-local function close_pin()
-  unfocus()
-
-  if pin_augroup then
-    pcall(vim.api.nvim_del_augroup_by_id, pin_augroup)
-    pin_augroup = nil
+  local lines = {}
+  for i, m in ipairs(state.marks) do
+    lines[i] = utils.pretty(m.file)
   end
 
-  if has_win(state.pin_win) then pcall(vim.api.nvim_win_close, state.pin_win, true) end
-  state.pin_win = nil
+  menu_buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_name(menu_buf, 'miniharp')
+  vim.api.nvim_buf_set_lines(menu_buf, 0, -1, false, lines)
+  vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = menu_buf })
+  vim.api.nvim_set_option_value('filetype', 'miniharp', { buf = menu_buf })
+  -- acwrite so a reflexive :w syncs instead of erroring on the fake name
+  vim.api.nvim_set_option_value('buftype', 'acwrite', { buf = menu_buf })
+  vim.api.nvim_set_option_value('modified', false, { buf = menu_buf })
 
-  if has_buf(pin_buf) then pcall(vim.api.nvim_buf_delete, pin_buf, { force = true }) end
-  pin_buf = nil
-end
-
-local function open_pin()
-  pin_buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_set_option_value('modifiable', false, { buf = pin_buf })
-  vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = pin_buf })
-  vim.api.nvim_set_option_value('filetype', 'miniharp', { buf = pin_buf })
-  vim.api.nvim_set_option_value('buftype', 'nofile', { buf = pin_buf })
-
-  -- placeholder geometry: render() below positions and sizes it.
-  -- border only on the sides facing the editor (top + left), so the
-  -- outline sits flush against the statusline and screen edge
-  state.pin_win = vim.api.nvim_open_win(pin_buf, false, {
+  -- placeholder geometry: resize() below centres and sizes it
+  state.menu_win = vim.api.nvim_open_win(menu_buf, true, {
     relative = 'editor',
     row = 0,
     col = 0,
     width = 1,
     height = 1,
     style = 'minimal',
-    border = { '┌', '─', '─', '', '', '', '', '│' },
-    focusable = false,
-    noautocmd = true,
+    border = 'rounded',
+    title = ' miniharp ',
+    title_pos = 'center',
   })
 
-  local wo = vim.wo[state.pin_win]
+  local wo = vim.wo[state.menu_win]
   wo.wrap = false
-  wo.number = false
+  -- the line numbers are the mark numbers jump(i) takes
+  wo.number = true
   wo.relativenumber = false
+  wo.numberwidth = 2
+  wo.cursorline = false
   wo.signcolumn = 'no'
-  -- keep the outline unobtrusive: text and border in the dimmest
-  -- standard group (opaque, so scrolling underneath never changes
-  -- how it looks)
-  wo.winhighlight = 'NormalFloat:NonText,FloatBorder:NonText'
+
+  -- the current file's number is highlighted; re-set because a colorscheme clears links
+  vim.api.nvim_set_hl(0, 'MiniharpCurrent', { link = 'Title', default = true })
 
   local function map(lhs, rhs, desc)
-    vim.keymap.set('n', lhs, rhs, { buffer = pin_buf, silent = true, nowait = true, desc = 'miniharp: ' .. desc })
+    vim.keymap.set('n', lhs, rhs, { buffer = menu_buf, silent = true, nowait = true, desc = 'miniharp: ' .. desc })
   end
-  map('q', unfocus, 'back to editing')
-  map('l', jump_to_cursor_mark, 'jump to mark under cursor')
-  map('dd', remove_cursor_mark, 'remove mark under cursor')
-  map('<C-j>', function() move_cursor_mark(1) end, 'move mark down')
-  map('<C-k>', function() move_cursor_mark(-1) end, 'move mark up')
+  map('<CR>', open_under_cursor, 'open the file under the cursor')
+  map('q', close, 'close the menu')
+  map('<Esc>', close, 'close the menu')
 
-  pin_augroup = vim.api.nvim_create_augroup('MiniharpPin', { clear = true })
-  vim.api.nvim_create_autocmd({ 'BufEnter', 'VimResized' }, {
-    group = pin_augroup,
-    callback = render,
-    desc = 'miniharp: refresh outline',
+  menu_augroup = vim.api.nvim_create_augroup('MiniharpMenu', { clear = true })
+  vim.api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI', 'VimResized' }, {
+    group = menu_augroup,
+    buffer = menu_buf,
+    callback = resize,
+    desc = 'miniharp: keep the menu fitted to the list',
+  })
+  vim.api.nvim_create_autocmd('BufWriteCmd', {
+    group = menu_augroup,
+    buffer = menu_buf,
+    callback = sync,
+    desc = 'miniharp: :w applies the edited list',
+  })
+  vim.api.nvim_create_autocmd('BufLeave', {
+    group = menu_augroup,
+    buffer = menu_buf,
+    callback = close,
+    desc = 'miniharp: leaving the menu applies and closes it',
   })
 
-  render()
+  resize()
+
+  local i = current_index()
+  if i then
+    pcall(vim.api.nvim_win_set_cursor, state.menu_win, { i, 0 })
+    vim.api.nvim_buf_set_extmark(menu_buf, ns, i - 1, 0, { number_hl_group = 'MiniharpCurrent' })
+  end
 end
 
-function M.toggle_pin()
-  if M.is_pin_open() then
-    close_pin()
+---Toggle the mark list: a centred float you edit like any other buffer.
+---The text is applied when it closes.
+function M.toggle()
+  if M.is_open() then
+    close()
     return
   end
 
-  close_pin()
-  open_pin()
+  open()
 end
-
----Enter the outline to interact with it (l, dd, <C-j>/<C-k>, q);
----opens it first when closed. Entering while inside leaves it again.
-function M.focus_pin()
-  if focused() then
-    unfocus()
-    return
-  end
-
-  if not M.is_pin_open() then open_pin() end
-
-  state.origin_win = vim.api.nvim_get_current_win()
-  vim.api.nvim_set_current_win(state.pin_win)
-  pcall(vim.api.nvim_win_set_cursor, state.pin_win, { current_index() or 1, 0 })
-  render()
-end
-
-function M.refresh() render() end
 
 return M
