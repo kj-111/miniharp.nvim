@@ -43,12 +43,25 @@ end
 
 -- ---- public API ----
 
+-- oil://, fugitive:// and friends: a name, but nothing to reopen later
+---@param path string
+local function is_uri(path) return path:match('^%a[%w+.-]*://') ~= nil end
+
 ---Toggle a file mark for the current buffer, or for `file` when given.
 ---@param file? string
 function M.toggle_file(file)
+  if not file and vim.bo.buftype ~= '' then
+    log.warn('cannot mark a %s buffer', vim.bo.buftype)
+    return
+  end
+
   file = file and utils.norm(file) or utils.bufname()
   if file == '' then
     log.warn('cannot mark an unnamed buffer')
+    return
+  end
+  if is_uri(file) then
+    log.warn('cannot mark %s, that is not a file', file)
     return
   end
 

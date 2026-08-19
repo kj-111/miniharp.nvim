@@ -29,6 +29,16 @@ miniharp.toggle_file()
 assert(#state.marks == 1, 'expected toggle to remove the current file mark')
 miniharp.toggle_file()
 
+-- only real files get marked
+local before = #state.marks
+vim.cmd('help')
+miniharp.toggle_file()
+assert(#state.marks == before, 'a help buffer is not a file')
+vim.cmd('close')
+miniharp.toggle_file('oil:///tmp/')
+assert(#state.marks == before, 'a uri is not a file')
+vim.cmd('edit lua/miniharp/core.lua')
+
 -- toggle by path (e.g. from a file explorer like oil.nvim)
 miniharp.toggle_file('lua/miniharp/marks.lua')
 assert(#state.marks == 3, 'toggle_file(path) should add a mark for another file')
