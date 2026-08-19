@@ -11,7 +11,6 @@ local utils = require('miniharp.utils')
 ---@field idx integer
 ---@field augroup? integer
 ---@field menu_win? integer
----@field origin_win? integer -- window the menu was opened from
 
 local M ---@type MiniharpState
 
@@ -21,7 +20,6 @@ M = {
   idx = 0,
   augroup = nil,
   menu_win = nil,
-  origin_win = nil,
 }
 
 return M

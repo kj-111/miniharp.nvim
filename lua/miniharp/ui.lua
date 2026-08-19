@@ -9,6 +9,7 @@ local ns = vim.api.nvim_create_namespace('miniharp')
 
 local menu_buf
 local menu_augroup
+local origin_win
 local closing = false
 
 local function has_win(id) return id and vim.api.nvim_win_is_valid(id) end
@@ -16,16 +17,6 @@ local function has_win(id) return id and vim.api.nvim_win_is_valid(id) end
 local function has_buf(id) return id and vim.api.nvim_buf_is_valid(id) end
 
 function M.is_open() return has_win(state.menu_win) and has_buf(menu_buf) end
-
--- the file the menu stars: the buffer of the window it was opened from
----@return integer|nil
-local function current_index()
-  local file = has_win(state.origin_win) and utils.bufname(vim.api.nvim_win_get_buf(state.origin_win))
-    or utils.bufname()
-  for i, m in ipairs(state.marks) do
-    if m.file == file then return i end
-  end
-end
 
 ---Read the list back out of the buffer; the text is the source of truth.
 local function sync()
@@ -65,14 +56,14 @@ end
 local function resize()
   if not M.is_open() then return end
 
-  local count = vim.api.nvim_buf_line_count(menu_buf)
+  local lines = vim.api.nvim_buf_get_lines(menu_buf, 0, -1, false)
   local width = 30
-  for _, line in ipairs(vim.api.nvim_buf_get_lines(menu_buf, 0, -1, false)) do
+  for _, line in ipairs(lines) do
     -- +3 for the number column and a column of slack for the cursor
     width = math.max(width, vim.fn.strdisplaywidth(line) + 3)
   end
   width = math.min(width, math.max(20, vim.o.columns - 4))
-  local height = math.min(count, math.max(1, vim.o.lines - 6))
+  local height = math.min(#lines, math.max(1, vim.o.lines - 6))
 
   vim.api.nvim_win_set_config(state.menu_win, {
     relative = 'editor',
@@ -100,8 +91,8 @@ local function close()
   if has_buf(menu_buf) then pcall(vim.api.nvim_buf_delete, menu_buf, { force = true }) end
   menu_buf = nil
 
-  if has_win(state.origin_win) then pcall(vim.api.nvim_set_current_win, state.origin_win) end
-  state.origin_win = nil
+  if has_win(origin_win) then pcall(vim.api.nvim_set_current_win, origin_win) end
+  origin_win = nil
 
   closing = false
 end
@@ -117,11 +108,14 @@ local function open_under_cursor()
 end
 
 local function open()
-  state.origin_win = vim.api.nvim_get_current_win()
+  origin_win = vim.api.nvim_get_current_win()
 
-  local lines = {}
+  -- the file the menu stars: the one we were editing when it opened
+  local current = utils.bufname()
+  local lines, current_row = {}, nil
   for i, m in ipairs(state.marks) do
     lines[i] = utils.pretty(m.file)
+    if m.file == current then current_row = i end
   end
 
   menu_buf = vim.api.nvim_create_buf(false, true)
@@ -146,14 +140,12 @@ local function open()
     title_pos = 'center',
   })
 
+  -- style = 'minimal' already clears the rest of the gutter and decorations
   local wo = vim.wo[state.menu_win]
   wo.wrap = false
   -- the line numbers are the mark numbers jump(i) takes
   wo.number = true
-  wo.relativenumber = false
   wo.numberwidth = 2
-  wo.cursorline = false
-  wo.signcolumn = 'no'
 
   -- the current file's number is highlighted; re-set because a colorscheme clears links
   vim.api.nvim_set_hl(0, 'MiniharpCurrent', { link = 'Title', default = true })
@@ -187,10 +179,9 @@ local function open()
 
   resize()
 
-  local i = current_index()
-  if i then
-    pcall(vim.api.nvim_win_set_cursor, state.menu_win, { i, 0 })
-    vim.api.nvim_buf_set_extmark(menu_buf, ns, i - 1, 0, { number_hl_group = 'MiniharpCurrent' })
+  if current_row then
+    pcall(vim.api.nvim_win_set_cursor, state.menu_win, { current_row, 0 })
+    vim.api.nvim_buf_set_extmark(menu_buf, ns, current_row - 1, 0, { number_hl_group = 'MiniharpCurrent' })
   end
 end
 

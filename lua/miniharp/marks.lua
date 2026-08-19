@@ -15,10 +15,8 @@ function M.find(file)
 end
 
 ---@param i integer
----@return boolean, MiniharpMark?
 function M.remove_at(i)
-  local mark = state.marks[i]
-  if not mark then return false end
+  if not state.marks[i] then return end
 
   table.remove(state.marks, i)
 
@@ -27,27 +25,6 @@ function M.remove_at(i)
   elseif state.idx == i then
     state.idx = math.min(i, #state.marks)
   end
-
-  return true, mark
-end
-
----Swap mark i with its neighbour at i + delta.
----@param i integer
----@param delta integer
----@return integer|nil new_index
-function M.move(i, delta)
-  local j = i + delta
-  if not state.marks[i] or not state.marks[j] then return end
-
-  state.marks[i], state.marks[j] = state.marks[j], state.marks[i]
-
-  if state.idx == i then
-    state.idx = j
-  elseif state.idx == j then
-    state.idx = i
-  end
-
-  return j
 end
 
 ---@param i integer
