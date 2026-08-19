@@ -90,7 +90,15 @@ feed('q')
 assert(vim.fn.fnamemodify(state.marks[1].file, ':t') == 'core.lua', 'moving a line should reorder the marks')
 assert(vim.fn.fnamemodify(state.marks[2].file, ':t') == 'init.lua', 'moving a line should reorder the marks')
 
--- <CR> opens the file under the cursor and closes the menu
+-- l opens the file under the cursor and closes the menu
+vim.cmd('edit lua/miniharp/ui.lua')
+miniharp.toggle_menu()
+vim.api.nvim_win_set_cursor(state.menu_win, { 1, 0 })
+feed('l')
+assert(not ui.is_open(), 'l should close the menu')
+assert(vim.fn.expand('%:t') == 'core.lua', 'l should open the mark under the cursor')
+
+-- <CR> does the same
 vim.cmd('edit lua/miniharp/ui.lua')
 vim.cmd('Miniharp menu')
 assert(ui.is_open(), ':Miniharp menu should open the menu')

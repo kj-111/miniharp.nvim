@@ -154,6 +154,7 @@ local function open()
     vim.keymap.set('n', lhs, rhs, { buffer = menu_buf, silent = true, nowait = true, desc = 'miniharp: ' .. desc })
   end
   map('<CR>', open_under_cursor, 'open the file under the cursor')
+  map('l', open_under_cursor, 'open the file under the cursor')
   map('q', close, 'close the menu')
   map('<Esc>', close, 'close the menu')
 

@@ -11,8 +11,8 @@
 
 The menu is a normal modifiable buffer, so you edit the list with the vim you
 already know: `dd` removes, `ddp` or `:m` reorders, typing a path adds. `<CR>`
-opens the file under the cursor; `q` or `<Esc>` closes. The text is applied
-when the menu closes.
+or `l` opens the file under the cursor; `q` or `<Esc>` closes. The text is
+applied when the menu closes.
 
 ## Installation
 
