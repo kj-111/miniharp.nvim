@@ -136,8 +136,6 @@ local function open()
     height = 1,
     style = 'minimal',
     border = 'rounded',
-    title = ' miniharp ',
-    title_pos = 'center',
   })
 
   -- style = 'minimal' already clears the rest of the gutter and decorations
